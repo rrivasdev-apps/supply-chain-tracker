@@ -13,7 +13,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard" },
+  { href: "/dashboard", label: "Dashboard", roles: ["producer", "factory", "retailer", "consumer"] },
   { href: "/tokens", label: "Tokens", roles: ["producer", "factory", "retailer", "consumer"] },
   { href: "/transfers", label: "Transferencias", roles: ["producer", "factory", "retailer", "consumer"] },
   { href: "/profile", label: "Perfil" },
@@ -26,7 +26,7 @@ export function Sidebar() {
 
   const visible = NAV_ITEMS.filter((item) => {
     if (item.adminOnly) return isAdmin
-    if (item.roles) return item.roles.includes(role ?? "")
+    if (item.roles) return !isAdmin && item.roles.includes(role ?? "")
     return true
   })
 

@@ -10,6 +10,16 @@ import "../src/SupplyChain.sol";
 ///      Para test específico: forge test --match-test <nombre> -vvv
 contract SupplyChainTest is Test {
 
+    // Re-declaramos los eventos del contrato para poder usarlos con vm.expectEmit
+    event TokenCreated(uint256 indexed tokenId, address indexed creator, string name, uint256 totalSupply, uint256 parentId);
+    event TokenBurned(uint256 indexed tokenId, address indexed burner);
+    event MaterialConsumed(address indexed factory, uint256 indexed tokenId, uint256 amount);
+    event TransferRequested(uint256 indexed transferId, address indexed from, address indexed to, uint256 tokenId, uint256 amount);
+    event TransferAccepted(uint256 indexed transferId);
+    event TransferRejected(uint256 indexed transferId);
+    event UserRoleRequested(address indexed user, string role);
+    event UserStatusChanged(address indexed user, SupplyChain.UserStatus status);
+
     SupplyChain public sc;
 
     // Cuentas de prueba (simulan las wallets de Anvil)
@@ -266,12 +276,99 @@ contract SupplyChainTest is Test {
         sc.createToken("Ghost product", 5, "{}", 9999);
     }
 
-    function testCreateWithoutBalanceOfParentReverts() public {
-        // Lámina existe pero factory no tiene balance (no ha recibido transferencia)
+    function testCreateWithoutBalanceOfParentAllowed() public {
+        // Con BOM: el consumo ocurre via consumeRawMaterial antes de createToken.
+        // El contrato ya no exige balance del parentId en createToken.
         uint256 laminaId = _createLamina(10, "{}");
+        // Factory crea producto sin haber recibido la lámina (solo traza el origen)
+        vm.prank(factoryAddr);
+        sc.createToken("Producto trazado", 5, "{}", laminaId);
+        uint256 prodId = sc.nextTokenId() - 1;
+        assertEq(sc.getTokenBalance(prodId, factoryAddr), 5);
+    }
+
+    // =========================================================================
+    // TESTS: CONSUME RAW MATERIAL (ESTRUCTURA DE PRODUCTO / BOM)
+    // =========================================================================
+
+    function testConsumeRawMaterial() public {
+        uint256 laminaId = _setupFactoryWithLamina(100);
+        uint256 balanceBefore = sc.getTokenBalance(laminaId, factoryAddr);
+        assertEq(balanceBefore, 100);
+
+        vm.prank(factoryAddr);
+        sc.consumeRawMaterial(laminaId, 30);
+
+        assertEq(sc.getTokenBalance(laminaId, factoryAddr), 70);
+    }
+
+    function testConsumeRawMaterialEvent() public {
+        uint256 laminaId = _setupFactoryWithLamina(50);
+
+        vm.prank(factoryAddr);
+        vm.expectEmit(true, true, false, true);
+        emit MaterialConsumed(factoryAddr, laminaId, 20);
+        sc.consumeRawMaterial(laminaId, 20);
+    }
+
+    function testConsumeRawMaterialInsufficientBalance() public {
+        uint256 laminaId = _setupFactoryWithLamina(10);
+
         vm.prank(factoryAddr);
         vm.expectRevert(SupplyChain.InsufficientBalance.selector);
-        sc.createToken("Producto sin lamina", 5, "{}", laminaId);
+        sc.consumeRawMaterial(laminaId, 100);
+    }
+
+    function testConsumeRawMaterialZeroAmountReverts() public {
+        uint256 laminaId = _setupFactoryWithLamina(10);
+
+        vm.prank(factoryAddr);
+        vm.expectRevert(SupplyChain.ZeroAmount.selector);
+        sc.consumeRawMaterial(laminaId, 0);
+    }
+
+    function testConsumeRawMaterialOnlyFactory() public {
+        uint256 laminaId = _createLamina(10, "{}");
+
+        vm.prank(producerAddr);
+        vm.expectRevert(SupplyChain.NotFactory.selector);
+        sc.consumeRawMaterial(laminaId, 5);
+    }
+
+    function testConsumeProductTokenReverts() public {
+        // No se puede consumir un producto terminado (parentId > 0)
+        uint256 laminaId = _setupFactoryWithLamina(10);
+        vm.prank(factoryAddr);
+        sc.createToken("Puerta", 5, "{}", laminaId);
+        uint256 prodId = sc.nextTokenId() - 1;
+
+        vm.prank(factoryAddr);
+        vm.expectRevert(SupplyChain.NotRawMaterial.selector);
+        sc.consumeRawMaterial(prodId, 1);
+    }
+
+    function testConsumeAndCreateProductBOM() public {
+        // Flujo BOM completo: consume 2 materiales distintos, luego crea producto
+        uint256 l1 = _setupFactoryWithLamina(100);
+        uint256 l2 = _createLamina(200, '{"calidad":"B"}');
+        uint256 t2 = _transferLaminaToFactory(l2, 200);
+        _accept(factoryAddr, t2);
+
+        // Estructura: 1 puerta = 3 unidades de l1 + 5 unidades de l2
+        // Producir 10 puertas → consumir 30 de l1, 50 de l2
+        vm.prank(factoryAddr);
+        sc.consumeRawMaterial(l1, 30);
+        vm.prank(factoryAddr);
+        sc.consumeRawMaterial(l2, 50);
+
+        // Crear 10 puertas referenciando l1 como material principal
+        vm.prank(factoryAddr);
+        sc.createToken("Puerta Blindada", 10, '{"type":"puerta","bom":"[{l1:3},{l2:5}]"}', l1);
+        uint256 prodId = sc.nextTokenId() - 1;
+
+        assertEq(sc.getTokenBalance(prodId, factoryAddr), 10);
+        assertEq(sc.getTokenBalance(l1, factoryAddr), 70);
+        assertEq(sc.getTokenBalance(l2, factoryAddr), 150);
     }
 
     // =========================================================================
@@ -579,21 +676,21 @@ contract SupplyChainTest is Test {
         address newUser = address(0x300);
         vm.prank(newUser);
         vm.expectEmit(true, false, false, true);
-        emit SupplyChain.UserRoleRequested(newUser, "producer");
+        emit UserRoleRequested(newUser, "producer");
         sc.requestUserRole("producer");
     }
 
     function testUserStatusChangedEvent() public {
         vm.prank(adminAddr);
         vm.expectEmit(true, false, false, true);
-        emit SupplyChain.UserStatusChanged(producerAddr, SupplyChain.UserStatus.Rejected);
+        emit UserStatusChanged(producerAddr, SupplyChain.UserStatus.Rejected);
         sc.changeStatusUser(producerAddr, SupplyChain.UserStatus.Rejected);
     }
 
     function testTokenCreatedEvent() public {
         vm.prank(producerAddr);
         vm.expectEmit(false, true, false, false);
-        emit SupplyChain.TokenCreated(1, producerAddr, "Lamina Hierro", 100, 0);
+        emit TokenCreated(1, producerAddr, "Lamina Hierro", 100, 0);
         sc.createToken("Lamina Hierro", 100, "{}", 0);
     }
 
@@ -601,7 +698,7 @@ contract SupplyChainTest is Test {
         uint256 tokenId = _createLamina(10, "{}");
         vm.prank(producerAddr);
         vm.expectEmit(false, true, true, false);
-        emit SupplyChain.TransferRequested(1, producerAddr, factoryAddr, tokenId, 10);
+        emit TransferRequested(1, producerAddr, factoryAddr, tokenId, 10);
         sc.transfer(factoryAddr, tokenId, 10);
     }
 
@@ -610,7 +707,7 @@ contract SupplyChainTest is Test {
         uint256 tId = _transferLaminaToFactory(tokenId, 10);
         vm.prank(factoryAddr);
         vm.expectEmit(true, false, false, false);
-        emit SupplyChain.TransferAccepted(tId);
+        emit TransferAccepted(tId);
         sc.acceptTransfer(tId);
     }
 
@@ -619,7 +716,7 @@ contract SupplyChainTest is Test {
         uint256 tId = _transferLaminaToFactory(tokenId, 10);
         vm.prank(factoryAddr);
         vm.expectEmit(true, false, false, false);
-        emit SupplyChain.TransferRejected(tId);
+        emit TransferRejected(tId);
         sc.rejectTransfer(tId);
     }
 
@@ -638,7 +735,7 @@ contract SupplyChainTest is Test {
 
         vm.prank(consumerAddr);
         vm.expectEmit(true, true, false, false);
-        emit SupplyChain.TokenBurned(prodId, consumerAddr);
+        emit TokenBurned(prodId, consumerAddr);
         sc.burnToken(prodId);
     }
 

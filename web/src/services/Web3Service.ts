@@ -120,6 +120,15 @@ export async function burnToken(
   return tx.wait()
 }
 
+export async function consumeRawMaterial(
+  contract: ethers.Contract,
+  tokenId: bigint,
+  amount: bigint
+): Promise<ethers.TransactionReceipt> {
+  const tx = await contract.consumeRawMaterial(tokenId, amount)
+  return tx.wait()
+}
+
 export async function transfer(
   contract: ethers.Contract,
   to: string,

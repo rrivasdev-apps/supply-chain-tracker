@@ -5,24 +5,29 @@ import { useRouter } from "next/navigation"
 import { useWeb3 } from "@/contexts/Web3Context"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { useTokens, TokenWithBalance } from "@/hooks/useTokens"
+import { useBomTemplates, BomTemplate } from "@/hooks/useBomTemplates"
 import { TokenList } from "@/components/tokens/TokenList"
 import { CreateTokenForm } from "@/components/tokens/CreateTokenForm"
 import { TransferForm } from "@/components/transfers/TransferForm"
+import { BomEditor } from "@/components/factory/BomEditor"
+import { BomTemplateList } from "@/components/factory/BomTemplateList"
+import { CreateProductWithBom } from "@/components/factory/CreateProductWithBom"
 import { burnToken } from "@/services/Web3Service"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 
 export default function TokensPage() {
   const router = useRouter()
   const { isConnected, userStatus, role, contract } = useWeb3()
   const { tokens, loading, refetch } = useTokens()
+  const { templates, saveTemplate, updateTemplate, duplicateTemplate, deleteTemplate, isOwner } = useBomTemplates()
 
   const [transferToken, setTransferToken] = useState<TokenWithBalance | null>(null)
-  const [selectedParent, setSelectedParent] = useState<bigint | undefined>()
+  const [editingTemplate, setEditingTemplate] = useState<BomTemplate | null>(null)
+  const [showBomEditor, setShowBomEditor] = useState(false)
+  const [activeTemplate, setActiveTemplate] = useState<BomTemplate | null>(null)
 
   useEffect(() => {
     if (!isConnected || userStatus !== 1) router.push("/")
@@ -94,7 +99,10 @@ export default function TokensPage() {
             <TabsList>
               <TabsTrigger value="rawmaterials">Materias primas ({rawMaterials.length})</TabsTrigger>
               <TabsTrigger value="products">Productos terminados ({products.length})</TabsTrigger>
-              <TabsTrigger value="create">Fabricar producto</TabsTrigger>
+              <TabsTrigger value="structures">
+                Estructuras ({templates.length})
+              </TabsTrigger>
+              <TabsTrigger value="produce">Fabricar</TabsTrigger>
             </TabsList>
 
             <TabsContent value="rawmaterials" className="pt-4">
@@ -105,7 +113,7 @@ export default function TokensPage() {
               />
             </TabsContent>
 
-            <TabsContent value="products" className="pt-4 space-y-4">
+            <TabsContent value="products" className="pt-4">
               <TokenList
                 tokens={products}
                 loading={loading}
@@ -114,30 +122,72 @@ export default function TokensPage() {
               />
             </TabsContent>
 
-            <TabsContent value="create" className="pt-4 space-y-4">
-              {rawMaterials.length > 0 ? (
-                <>
-                  <div className="space-y-1.5 max-w-sm">
-                    <Label>Lámina de origen (parentId)</Label>
-                    <Select onValueChange={(v) => typeof v === "string" && v && setSelectedParent(BigInt(v))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona lámina..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {rawMaterials.map((t) => (
-                          <SelectItem key={t.id.toString()} value={t.id.toString()}>
-                            #{t.id.toString()} · {t.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <CreateTokenForm mode="product" parentTokenId={selectedParent} onSuccess={refetch} />
-                </>
+            <TabsContent value="structures" className="pt-4 space-y-4">
+              {(showBomEditor || editingTemplate) ? (
+                <BomEditor
+                  rawMaterials={rawMaterials}
+                  initial={editingTemplate ?? undefined}
+                  onSave={(data) => {
+                    if (editingTemplate) {
+                      updateTemplate(editingTemplate.id, data)
+                      toast.success("Estructura actualizada")
+                    } else {
+                      saveTemplate(data)
+                      toast.success("Estructura guardada")
+                    }
+                    setEditingTemplate(null)
+                    setShowBomEditor(false)
+                  }}
+                  onCancel={() => { setEditingTemplate(null); setShowBomEditor(false) }}
+                />
               ) : (
-                <p className="text-muted-foreground text-sm">
-                  Necesitas materias primas antes de fabricar productos. Acepta transferencias entrantes en la pestaña de Transferencias.
-                </p>
+                <>
+                  <div className="flex justify-end">
+                    <Button onClick={() => setShowBomEditor(true)}>+ Nueva estructura</Button>
+                  </div>
+                  <BomTemplateList
+                    templates={templates}
+                    rawMaterials={rawMaterials}
+                    isOwner={isOwner}
+                    onEdit={(t) => { setEditingTemplate(t); setShowBomEditor(false) }}
+                    onDuplicate={(id) => { duplicateTemplate(id); toast.success("Estructura duplicada") }}
+                    onDelete={(id) => { deleteTemplate(id); toast.success("Estructura eliminada") }}
+                    onUse={(t) => setActiveTemplate(t)}
+                  />
+                </>
+              )}
+            </TabsContent>
+
+            <TabsContent value="produce" className="pt-4 space-y-4">
+              {activeTemplate ? (
+                <CreateProductWithBom
+                  template={activeTemplate}
+                  rawMaterials={rawMaterials}
+                  onSuccess={() => { setActiveTemplate(null); refetch() }}
+                  onCancel={() => setActiveTemplate(null)}
+                />
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Selecciona una estructura en la pestaña "Estructuras" y haz clic en "Usar estructura" para producir.
+                  </p>
+                  {templates.length > 0 && (
+                    <BomTemplateList
+                      templates={templates}
+                      rawMaterials={rawMaterials}
+                      isOwner={isOwner}
+                      onEdit={(t) => { setEditingTemplate(t); setShowBomEditor(false) }}
+                      onDuplicate={(id) => { duplicateTemplate(id); toast.success("Estructura duplicada") }}
+                      onDelete={(id) => { deleteTemplate(id); toast.success("Estructura eliminada") }}
+                      onUse={(t) => setActiveTemplate(t)}
+                    />
+                  )}
+                  {templates.length === 0 && rawMaterials.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Primero acepta transferencias de materias primas y luego crea estructuras de producto.
+                    </p>
+                  )}
+                </div>
               )}
             </TabsContent>
           </Tabs>

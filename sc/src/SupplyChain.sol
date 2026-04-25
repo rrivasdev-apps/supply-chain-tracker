@@ -78,6 +78,7 @@ contract SupplyChain {
         uint256 parentId
     );
     event TokenBurned(uint256 indexed tokenId, address indexed burner);
+    event MaterialConsumed(address indexed factory, uint256 indexed tokenId, uint256 amount);
     event TransferRequested(
         uint256 indexed transferId,
         address indexed from,
@@ -111,6 +112,8 @@ contract SupplyChain {
     error OnlyConsumerCanBurn();
     error ParentTokenNotFound();
     error ParentTokenBurned();
+    error NotFactory();
+    error NotRawMaterial();
 
     // =========================================================================
     // CONSTRUCTOR
@@ -216,8 +219,8 @@ contract SupplyChain {
             // El token padre debe existir y no estar quemado
             if (tokens[parentId].id == 0) revert ParentTokenNotFound();
             if (tokens[parentId].burned)  revert ParentTokenBurned();
-            // La factory debe tener balance del token padre
-            if (tokens[parentId].balance[msg.sender] == 0) revert InsufficientBalance();
+            // Nota: el balance del parentId es verificado por consumeRawMaterial()
+            // antes de llamar a createToken() cuando se usa el sistema de estructuras.
         }
 
         uint256 tokenId = nextTokenId++;
@@ -236,6 +239,24 @@ contract SupplyChain {
         _userTokenIds[msg.sender].push(tokenId);
 
         emit TokenCreated(tokenId, msg.sender, name, totalSupply, parentId);
+    }
+
+    /// @notice La fábrica consume materias primas al producir con una estructura (BOM)
+    /// @dev Reduce el balance de la fábrica para el material consumido.
+    ///      Llamar antes de createToken() para cada material en la estructura.
+    /// @param tokenId  Token de materia prima (parentId == 0) a consumir
+    /// @param amount   Cantidad a consumir (totalConsumo = amountPerUnit * unidadesAProducir)
+    function consumeRawMaterial(uint256 tokenId, uint256 amount) public onlyApproved {
+        if (amount == 0) revert ZeroAmount();
+        uint256 uid = addressToUserId[msg.sender];
+        if (!_strEq(users[uid].role, "factory")) revert NotFactory();
+        if (tokens[tokenId].id == 0) revert TokenNotFound();
+        if (tokens[tokenId].parentId != 0) revert NotRawMaterial();
+        if (tokens[tokenId].balance[msg.sender] < amount) revert InsufficientBalance();
+
+        tokens[tokenId].balance[msg.sender] -= amount;
+
+        emit MaterialConsumed(msg.sender, tokenId, amount);
     }
 
     /// @notice Quema el token cuando el Consumer redime el producto

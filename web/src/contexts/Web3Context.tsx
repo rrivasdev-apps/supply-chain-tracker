@@ -99,15 +99,22 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     const handleAccountsChanged = (accounts: string[]) => {
       if (accounts.length === 0) {
         disconnectWallet()
-      } else {
-        setAccount(accounts[0])
-        if (contract) loadUser(accounts[0], contract)
+        return
+      }
+      // Re-create the signer and contract for the new account
+      if (provider) {
+        provider.getSigner().then((signer) => {
+          const newContract = getContract(signer)
+          setAccount(accounts[0])
+          setContract(newContract)
+          loadUser(accounts[0], newContract)
+        })
       }
     }
 
     ethereum.on("accountsChanged", handleAccountsChanged)
     return () => ethereum.removeListener("accountsChanged", handleAccountsChanged)
-  }, [contract, disconnectWallet, loadUser])
+  }, [provider, disconnectWallet, loadUser])
 
   return (
     <Web3Context.Provider

@@ -38,7 +38,17 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm">
-          {isConnected && (userStatus === 1 || isAdmin) && (
+          {isConnected && isAdmin && (
+            <>
+              <Link href="/admin" className="text-muted-foreground hover:text-foreground transition-colors">
+                Admin
+              </Link>
+              <Link href="/profile" className="text-muted-foreground hover:text-foreground transition-colors">
+                Perfil
+              </Link>
+            </>
+          )}
+          {isConnected && !isAdmin && userStatus === 1 && (
             <>
               <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
                 Dashboard
@@ -49,11 +59,6 @@ export function Navbar() {
               <Link href="/transfers" className="text-muted-foreground hover:text-foreground transition-colors">
                 Transferencias
               </Link>
-              {isAdmin && (
-                <Link href="/admin" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Admin
-                </Link>
-              )}
             </>
           )}
         </nav>
