@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { useWeb3 } from "@/contexts/Web3Context"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { useTokens } from "@/hooks/useTokens"
@@ -34,17 +35,17 @@ export default function DashboardPage() {
 
   const stats = [
     {
-      label: role === "producer" ? "Láminas activas" : role === "factory" ? "Materias primas" : "Tokens activos",
+      label: role === "producer" ? "Productos Activos" : role === "factory" ? "Materias Primas" : "Tokens Activos",
       value: role === "factory" ? rawMaterials.length : activeTokens.length,
       loading: tokensLoading,
     },
     ...(role === "factory" ? [{
-      label: "Productos fabricados",
+      label: "Productos Fabricados",
       value: products.length,
       loading: tokensLoading,
     }] : []),
     {
-      label: "Transferencias pendientes",
+      label: "Transferencias Pendientes",
       value: pending.length,
       loading: transfersLoading,
       highlight: pending.length > 0,
@@ -85,7 +86,7 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-3xl font-bold">{stat.value}</span>
                     {stat.highlight && stat.value > 0 && (
-                      <Badge variant="secondary">Acción requerida</Badge>
+                      <Badge variant="secondary">Acción Requerida</Badge>
                     )}
                   </div>
                 )}
@@ -97,35 +98,35 @@ export default function DashboardPage() {
         <div className="grid md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Acciones rápidas</CardTitle>
+              <CardTitle className="text-base">Acciones Rápidas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {role === "producer" && (
-                <a href="/tokens" className="block p-3 rounded-md bg-muted hover:bg-muted/80 transition-colors text-sm">
-                  Crear nueva lámina de hierro →
-                </a>
+                <Link href="/tokens" className="block p-3 rounded-md bg-muted hover:bg-muted/80 transition-colors text-sm">
+                  Crear Nuevo Producto →
+                </Link>
               )}
               {role === "factory" && (
                 <>
-                  <a href="/tokens" className="block p-3 rounded-md bg-muted hover:bg-muted/80 transition-colors text-sm">
-                    Fabricar nuevo producto →
-                  </a>
-                  <a href="/transfers" className="block p-3 rounded-md bg-muted hover:bg-muted/80 transition-colors text-sm">
-                    Aceptar láminas recibidas →
-                  </a>
+                  <Link href="/tokens" className="block p-3 rounded-md bg-muted hover:bg-muted/80 transition-colors text-sm">
+                    Fabricar Nuevo Producto →
+                  </Link>
+                  <Link href="/transfers" className="block p-3 rounded-md bg-muted hover:bg-muted/80 transition-colors text-sm">
+                    Aceptar Transferencias →
+                  </Link>
                 </>
               )}
               {(role === "retailer" || role === "consumer") && (
-                <a href="/transfers" className="block p-3 rounded-md bg-muted hover:bg-muted/80 transition-colors text-sm">
-                  {pending.length > 0 ? `Revisar ${pending.length} transferencia(s) pendiente(s) →` : "Ver transferencias →"}
-                </a>
+                <Link href="/transfers" className="block p-3 rounded-md bg-muted hover:bg-muted/80 transition-colors text-sm">
+                  {pending.length > 0 ? `Revisar ${pending.length} Transferencia(s) Pendiente(s) →` : "Ver Transferencias →"}
+                </Link>
               )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Flujo de la cadena</CardTitle>
+              <CardTitle className="text-base">Flujo De La Cadena</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2 text-sm flex-wrap">

@@ -93,7 +93,7 @@ export default function AdminPage() {
       <Sidebar />
       <main className="flex-1 p-6 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Panel de Administración</h1>
+          <h1 className="text-2xl font-bold">Panel De Administración</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Flujo de prueba: conecta otras cuentas de Anvil → solicitan un rol → búscalas aquí → apruébalas.
           </p>
@@ -101,7 +101,7 @@ export default function AdminPage() {
 
         <Card className="border-blue-200 bg-blue-50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-blue-800">Cómo probar el flujo completo</CardTitle>
+            <CardTitle className="text-sm text-blue-800">Cómo Probar El Flujo Completo</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-blue-700 space-y-1">
             <p>1. Abre MetaMask y cambia a otra cuenta (Bob, Charlie, Dave, Eve)</p>
@@ -114,7 +114,7 @@ export default function AdminPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Buscar y gestionar usuario</CardTitle>
+            <CardTitle className="text-base">Buscar Y Gestionar Usuario</CardTitle>
             <CardDescription>Ingresa una dirección o usa las cuentas de prueba de abajo</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -136,7 +136,7 @@ export default function AdminPage() {
             </div>
 
             <div className="space-y-1 pt-1">
-              <p className="text-xs text-muted-foreground font-medium">Cuentas Anvil rápidas:</p>
+              <p className="text-xs text-muted-foreground font-medium">Cuentas Anvil Rápidas:</p>
               {ANVIL_ACCOUNTS.map(({ addr, label }) => (
                 <div key={addr} className="flex items-center justify-between gap-2 text-xs">
                   <span className="text-muted-foreground">{label}</span>
@@ -154,7 +154,7 @@ export default function AdminPage() {
 
         {users.length > 0 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Usuarios encontrados ({users.length})</h2>
+            <h2 className="text-lg font-semibold">Usuarios Encontrados ({users.length})</h2>
             {users.map((user) => (
               <Card key={user.addr}>
                 <CardContent className="pt-4">
@@ -214,26 +214,45 @@ export default function AdminPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Private keys de Anvil (para importar en MetaMask)</CardTitle>
+            <CardTitle className="text-sm">Private Keys De Anvil (Para Importar En MetaMask)</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2 font-mono text-xs text-muted-foreground">
-              <div className="flex justify-between">
-                <span>Account 2 (Bob)</span>
-                <span>0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Account 3 (Charlie)</span>
-                <span>0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Account 4 (Dave)</span>
-                <span>0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Account 5 (Eve)</span>
-                <span>0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926b</span>
-              </div>
+          <CardContent className="space-y-3">
+            <div className="text-xs bg-amber-50 border border-amber-200 rounded px-3 py-2 text-amber-800 space-y-1">
+              <p className="font-medium">Estas keys son válidas SOLO con el mnemónico por defecto de Anvil.</p>
+              <p>Si Anvil muestra direcciones distintas al arrancar, copia las keys directamente desde la terminal donde corre <code className="bg-amber-100 px-1 rounded">anvil</code>.</p>
+              <p>Verifica: al importar en MetaMask la cuenta debe tener <strong>10000 ETH</strong>. Si muestra 0, la key es incorrecta.</p>
+            </div>
+            <div className="space-y-2">
+              {[
+                { label: "Account 2 (Bob)",    addr: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", key: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" },
+                { label: "Account 3 (Charlie)", addr: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC", key: "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a" },
+                { label: "Account 4 (Dave)",   addr: "0x90F79bf6EB2c4f870365E785982E1f101E93b906", key: "0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6" },
+                { label: "Account 5 (Eve)",    addr: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", key: "0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926b" },
+              ].map(({ label, addr, key }) => (
+                <div key={addr} className="border rounded-md p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium">{label}</span>
+                    <span className="text-xs text-muted-foreground font-mono">{addr.slice(0,10)}…{addr.slice(-6)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs font-mono bg-muted px-2 py-1 rounded break-all">{key}</code>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(key); toast.success(`Key de ${label} copiada`) }}
+                      className="text-xs text-primary hover:underline shrink-0 font-medium"
+                    >
+                      Copiar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="text-xs text-muted-foreground space-y-1 pt-1">
+              <p className="font-medium">¿Cuenta importada con balance 0?</p>
+              <p>Ejecuta <code className="bg-muted px-1 rounded">anvil</code> sin argumentos y copia la private key de la cuenta que quieras desde la salida de la terminal. Anvil las imprime todas al arrancar.</p>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              <p className="font-medium mb-1">Mnemónico Por Defecto De Anvil:</p>
+              <code className="bg-muted px-2 py-1 rounded block">test test test test test test test test test test test junk</code>
             </div>
           </CardContent>
         </Card>

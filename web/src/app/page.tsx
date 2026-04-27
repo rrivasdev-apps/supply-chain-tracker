@@ -17,10 +17,10 @@ const ROLES = [
 ]
 
 const STATUS_INFO: Record<number, { title: string; description: string }> = {
-  0: { title: "Solicitud pendiente", description: "Tu solicitud está siendo revisada por el administrador." },
-  1: { title: "Cuenta aprobada", description: "Tu cuenta está activa." },
-  2: { title: "Solicitud rechazada", description: "Tu solicitud fue rechazada. Contacta al administrador." },
-  3: { title: "Cuenta cancelada", description: "Tu cuenta fue cancelada. Contacta al administrador." },
+  0: { title: "Solicitud Pendiente", description: "Tu solicitud está siendo revisada por el administrador." },
+  1: { title: "Cuenta Aprobada", description: "Tu cuenta está activa." },
+  2: { title: "Solicitud Rechazada", description: "Tu solicitud fue rechazada. Contacta al administrador." },
+  3: { title: "Cuenta Cancelada", description: "Tu cuenta fue cancelada. Contacta al administrador." },
 }
 
 export default function HomePage() {
@@ -57,7 +57,7 @@ export default function HomePage() {
       <main className="flex-1 flex items-center justify-center p-8">
         <div className="max-w-lg w-full text-center space-y-8">
           <div className="space-y-3">
-            <h1 className="text-4xl font-bold tracking-tight">Supply Chain Tracker</h1>
+            <h1 className="text-4xl font-bold tracking-tight">Metal Trace</h1>
             <p className="text-muted-foreground text-lg">
               Trazabilidad blockchain para cadena de suministro industrial.
               Desde la fundición hasta el cliente final.
@@ -71,7 +71,7 @@ export default function HomePage() {
           </div>
 
           <Button size="lg" onClick={connectWallet} className="w-full">
-            Conectar MetaMask para acceder
+            Conectar MetaMask Para Acceder
           </Button>
 
           <p className="text-xs text-muted-foreground">
@@ -87,8 +87,8 @@ export default function HomePage() {
       <main className="flex-1 flex items-center justify-center p-8">
         <Card className="max-w-md w-full">
           <CardHeader>
-            <CardTitle>Registro de usuario</CardTitle>
-            <CardDescription>Selecciona tu rol en la cadena de suministro</CardDescription>
+            <CardTitle>Registro De Usuario</CardTitle>
+            <CardDescription>Selecciona Tu Rol En La Cadena De Suministro</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -104,7 +104,7 @@ export default function HomePage() {
               ))}
             </div>
             <Button onClick={handleRequestRole} disabled={!selectedRole || requesting} className="w-full">
-              {requesting ? "Enviando solicitud..." : "Solicitar acceso"}
+              {requesting ? "Enviando solicitud..." : "Solicitar Acceso"}
             </Button>
           </CardContent>
         </Card>

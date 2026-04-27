@@ -27,6 +27,11 @@ export default function TransfersPage() {
     return acc
   }, {})
 
+  const tokenIsRawMap = tokens.reduce<Record<string, boolean>>((acc, t) => {
+    acc[t.id.toString()] = t.parentId === 0n
+    return acc
+  }, {})
+
   const handleAccept = useCallback(async (id: bigint) => {
     if (!contract) return
     try {
@@ -79,6 +84,7 @@ export default function TransfersPage() {
               transfers={incoming}
               loading={loading}
               tokenNames={tokenNames}
+              tokenIsRawMap={tokenIsRawMap}
               onAccept={handleAccept}
               onReject={handleReject}
               emptyMessage="No tienes transferencias recibidas."
@@ -90,6 +96,7 @@ export default function TransfersPage() {
               transfers={outgoing}
               loading={loading}
               tokenNames={tokenNames}
+              tokenIsRawMap={tokenIsRawMap}
               emptyMessage="No has enviado transferencias."
             />
           </TabsContent>

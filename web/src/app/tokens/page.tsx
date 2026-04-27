@@ -20,7 +20,7 @@ import { toast } from "sonner"
 
 export default function TokensPage() {
   const router = useRouter()
-  const { isConnected, userStatus, role, contract } = useWeb3()
+  const { isConnected, userStatus, role, contract, account } = useWeb3()
   const { tokens, loading, refetch } = useTokens()
   const { templates, saveTemplate, updateTemplate, duplicateTemplate, deleteTemplate, isOwner } = useBomTemplates()
 
@@ -28,6 +28,8 @@ export default function TokensPage() {
   const [editingTemplate, setEditingTemplate] = useState<BomTemplate | null>(null)
   const [showBomEditor, setShowBomEditor] = useState(false)
   const [activeTemplate, setActiveTemplate] = useState<BomTemplate | null>(null)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [editToken, setEditToken] = useState<TokenWithBalance | null>(null)
 
   useEffect(() => {
     if (!isConnected || userStatus !== 1) router.push("/")
@@ -59,15 +61,48 @@ export default function TokensPage() {
       <div className="flex flex-1">
         <Sidebar />
         <main className="flex-1 p-6 space-y-6">
-          <h1 className="text-2xl font-bold">Mis láminas</h1>
-          <CreateTokenForm mode="rawmaterial" onSuccess={refetch} />
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold">Mis Productos</h1>
+            {!showCreateForm && (
+              <Button onClick={() => setShowCreateForm(true)}>+ Nuevo Producto</Button>
+            )}
+          </div>
+          {showCreateForm && (
+            <CreateTokenForm
+              mode="rawmaterial"
+              editToken={editToken}
+              onSuccess={async () => {
+                try {
+                  await refetch()
+                } catch {
+                  toast.error("Producto creado pero ocurrió un error al actualizar la lista. Usa Actualizar.")
+                }
+                setShowCreateForm(false)
+                setEditToken(null)
+              }}
+              onCancel={() => { setShowCreateForm(false); setEditToken(null) }}
+            />
+          )}
           <div>
-            <h2 className="text-lg font-semibold mb-3">Inventario activo ({rawMaterials.length})</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold">Inventario Activo ({rawMaterials.length})</h2>
+              <Button variant="outline" size="sm" onClick={() => refetch()} disabled={loading}>
+                {loading ? "Actualizando..." : "Actualizar"}
+              </Button>
+            </div>
             <TokenList
               tokens={rawMaterials}
               loading={loading}
               onTransfer={setTransferToken}
-              emptyMessage="No tienes láminas activas. Crea una arriba."
+              onEdit={(t) => {
+                if (t.creator.toLowerCase() === account?.toLowerCase()) {
+                  setEditToken(t)
+                  setShowCreateForm(true)
+                } else {
+                  toast.info("Solo el creador puede modificar este producto")
+                }
+              }}
+              emptyMessage="No tienes productos activos."
             />
           </div>
           {burned.length > 0 && (
@@ -78,7 +113,7 @@ export default function TokensPage() {
           )}
           <Dialog open={!!transferToken} onOpenChange={(o) => !o && setTransferToken(null)}>
             <DialogContent>
-              <DialogHeader><DialogTitle>Transferir lámina</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>Transferir Lámina</DialogTitle></DialogHeader>
               {transferToken && (
                 <TransferForm token={transferToken} onSuccess={handleTransferSuccess} onCancel={() => setTransferToken(null)} />
               )}
@@ -94,11 +129,11 @@ export default function TokensPage() {
       <div className="flex flex-1">
         <Sidebar />
         <main className="flex-1 p-6 space-y-6">
-          <h1 className="text-2xl font-bold">Inventario de Fábrica</h1>
+          <h1 className="text-2xl font-bold">Inventario De Fábrica</h1>
           <Tabs defaultValue="rawmaterials">
             <TabsList>
-              <TabsTrigger value="rawmaterials">Materias primas ({rawMaterials.length})</TabsTrigger>
-              <TabsTrigger value="products">Productos terminados ({products.length})</TabsTrigger>
+              <TabsTrigger value="rawmaterials">Materias Primas ({rawMaterials.length})</TabsTrigger>
+              <TabsTrigger value="products">Productos Terminados ({products.length})</TabsTrigger>
               <TabsTrigger value="structures">
                 Estructuras ({templates.length})
               </TabsTrigger>
@@ -143,7 +178,7 @@ export default function TokensPage() {
               ) : (
                 <>
                   <div className="flex justify-end">
-                    <Button onClick={() => setShowBomEditor(true)}>+ Nueva estructura</Button>
+                    <Button onClick={() => setShowBomEditor(true)}>+ Nueva Estructura</Button>
                   </div>
                   <BomTemplateList
                     templates={templates}
@@ -194,7 +229,7 @@ export default function TokensPage() {
 
           <Dialog open={!!transferToken} onOpenChange={(o) => !o && setTransferToken(null)}>
             <DialogContent>
-              <DialogHeader><DialogTitle>Transferir producto</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>Transferir Producto</DialogTitle></DialogHeader>
               {transferToken && (
                 <TransferForm token={transferToken} onSuccess={handleTransferSuccess} onCancel={() => setTransferToken(null)} />
               )}
@@ -219,7 +254,7 @@ export default function TokensPage() {
           />
           <Dialog open={!!transferToken} onOpenChange={(o) => !o && setTransferToken(null)}>
             <DialogContent>
-              <DialogHeader><DialogTitle>Transferir producto</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>Transferir Producto</DialogTitle></DialogHeader>
               {transferToken && (
                 <TransferForm token={transferToken} onSuccess={handleTransferSuccess} onCancel={() => setTransferToken(null)} />
               )}

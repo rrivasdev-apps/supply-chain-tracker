@@ -78,6 +78,7 @@ contract SupplyChain {
         uint256 parentId
     );
     event TokenBurned(uint256 indexed tokenId, address indexed burner);
+    event TokenUpdated(uint256 indexed tokenId, string name, string features);
     event MaterialConsumed(address indexed factory, uint256 indexed tokenId, uint256 amount);
     event TransferRequested(
         uint256 indexed transferId,
@@ -114,6 +115,7 @@ contract SupplyChain {
     error ParentTokenBurned();
     error NotFactory();
     error NotRawMaterial();
+    error NotTokenCreator();
 
     // =========================================================================
     // CONSTRUCTOR
@@ -257,6 +259,22 @@ contract SupplyChain {
         tokens[tokenId].balance[msg.sender] -= amount;
 
         emit MaterialConsumed(msg.sender, tokenId, amount);
+    }
+
+    /// @notice El creador puede actualizar nombre y características de su token
+    function updateToken(
+        uint256 tokenId,
+        string memory name,
+        string memory features
+    ) public onlyApproved {
+        if (tokens[tokenId].id == 0)        revert TokenNotFound();
+        if (tokens[tokenId].burned)          revert TokenAlreadyBurned();
+        if (tokens[tokenId].creator != msg.sender) revert NotTokenCreator();
+
+        tokens[tokenId].name     = name;
+        tokens[tokenId].features = features;
+
+        emit TokenUpdated(tokenId, name, features);
     }
 
     /// @notice Quema el token cuando el Consumer redime el producto

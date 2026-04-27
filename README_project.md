@@ -206,3 +206,24 @@ forge script script/Deploy.s.sol \
 - [ ] Panel de Admin para gestión de usuarios
 - [ ] Flujo completo de transferencias con aceptación/rechazo
 - [ ] Pantalla de trazabilidad del Consumer
+
+---
+
+### Error #005
+**Fase**: 1 - Tests  
+**Descripción**: `forge build` fallaba con "Member UserRoleRequested not found or not visible after argument-dependent lookup in type(contract SupplyChain)".  
+**Causa**: En Solidity los eventos definidos dentro de un contrato no son accesibles como `NombreContrato.NombreEvento` desde un contrato externo. Foundry empareja eventos por su firma (keccak256), no por su origen.  
+**Solución**: Re-declarar los eventos del contrato dentro del contrato de test. Foundry los empareja automáticamente por firma al ejecutar `vm.expectEmit`.  
+**Archivos**: `sc/test/SupplyChain.t.sol`
+
+---
+
+## Resultado Fase 1 — Smart Contract ✅
+
+```
+Ran 56 tests for test/SupplyChain.t.sol:SupplyChainTest
+56 passed | 0 failed | 0 skipped
+Finished in 6.36ms
+```
+
+Todos los tests pasan. El contrato está listo para despliegue en Anvil.

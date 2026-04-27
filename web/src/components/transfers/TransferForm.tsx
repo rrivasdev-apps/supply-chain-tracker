@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { ethers } from "ethers"
+import { SCALE_FACTOR, fmtRaw } from "@/contracts/config"
 
 interface TransferFormProps {
   token: TokenWithBalance
@@ -23,6 +24,10 @@ export function TransferForm({ token, onSuccess, onCancel }: TransferFormProps) 
   const [amount, setAmount] = useState("")
   const [loading, setLoading] = useState(false)
 
+  const isRawMaterial = token.parentId === 0n
+  const balanceDisplay = isRawMaterial ? fmtRaw(token.balance) : token.balance.toString()
+  const maxInput = isRawMaterial ? (Number(token.balance) / SCALE_FACTOR).toString() : token.balance.toString()
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!contract) return
@@ -32,15 +37,22 @@ export function TransferForm({ token, onSuccess, onCancel }: TransferFormProps) 
       return
     }
 
-    const amt = BigInt(amount)
-    if (amt <= 0n || amt > token.balance) {
-      toast.error(`Cantidad debe ser entre 1 y ${token.balance.toString()}`)
+    const amtFloat = parseFloat(amount)
+    if (isNaN(amtFloat) || amtFloat <= 0) {
+      toast.error("Cantidad inválida")
+      return
+    }
+    const amtOnChain = isRawMaterial
+      ? BigInt(Math.round(amtFloat * SCALE_FACTOR))
+      : BigInt(Math.round(amtFloat))
+    if (amtOnChain <= 0n || amtOnChain > token.balance) {
+      toast.error(`Cantidad debe ser entre 0 y ${balanceDisplay}`)
       return
     }
 
     setLoading(true)
     try {
-      await transfer(contract, to, token.id, amt)
+      await transfer(contract, to, token.id, amtOnChain)
       toast.success("Transferencia iniciada — esperando aceptación")
       onSuccess?.()
     } catch (e) {
@@ -54,12 +66,12 @@ export function TransferForm({ token, onSuccess, onCancel }: TransferFormProps) 
     <Card>
       <CardHeader>
         <CardTitle>Transferir: {token.name}</CardTitle>
-        <p className="text-sm text-muted-foreground">Balance disponible: {token.balance.toString()}</p>
+        <p className="text-sm text-muted-foreground">Balance Disponible: {balanceDisplay}</p>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="to">Dirección destino</Label>
+            <Label htmlFor="to">Dirección Destino</Label>
             <Input
               id="to"
               value={to}
@@ -73,16 +85,17 @@ export function TransferForm({ token, onSuccess, onCancel }: TransferFormProps) 
             <Input
               id="amount"
               type="number"
-              min="1"
-              max={token.balance.toString()}
+              min={isRawMaterial ? "0.01" : "1"}
+              step={isRawMaterial ? "0.01" : "1"}
+              max={maxInput}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder="1"
+              placeholder={isRawMaterial ? "0.5" : "1"}
             />
           </div>
           <div className="flex gap-2">
             <Button type="submit" disabled={loading} className="flex-1">
-              {loading ? "Enviando..." : "Enviar transferencia"}
+              {loading ? "Enviando..." : "Enviar Transferencia"}
             </Button>
             {onCancel && (
               <Button type="button" variant="outline" onClick={onCancel}>

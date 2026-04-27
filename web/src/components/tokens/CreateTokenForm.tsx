@@ -1,26 +1,47 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useWeb3 } from "@/contexts/Web3Context"
-import { createToken } from "@/services/Web3Service"
+import { createToken, updateToken } from "@/services/Web3Service"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
+import { TokenWithBalance } from "@/hooks/useTokens"
+import { SCALE_FACTOR, fmtRaw } from "@/contracts/config"
 
 interface CreateTokenFormProps {
   mode: "rawmaterial" | "product"
   parentTokenId?: bigint
-  onSuccess?: () => void
+  editToken?: TokenWithBalance | null
+  onSuccess?: () => void | Promise<void>
+  onCancel?: () => void
 }
 
 const PRODUCT_TYPES = ["puerta", "reja", "marco", "panel", "otro"]
 
-export function CreateTokenForm({ mode, parentTokenId, onSuccess }: CreateTokenFormProps) {
+function parseFeatures(raw: string): Record<string, string> {
+  try {
+    const parsed = JSON.parse(raw)
+    if (typeof parsed === "object" && !Array.isArray(parsed)) {
+      return Object.fromEntries(
+        Object.entries(parsed).map(([k, v]) => [k, String(v)])
+      )
+    }
+  } catch { /* ignore */ }
+  return {}
+}
+
+export function CreateTokenForm({ mode, parentTokenId, editToken, onSuccess, onCancel }: CreateTokenFormProps) {
   const { contract } = useWeb3()
   const [loading, setLoading] = useState(false)
+
+  const isEditMode = !!editToken
+  const effectiveMode = editToken
+    ? (editToken.parentId === 0n ? "rawmaterial" : "product")
+    : mode
 
   const [name, setName] = useState("")
   const [totalSupply, setTotalSupply] = useState("")
@@ -37,24 +58,37 @@ export function CreateTokenForm({ mode, parentTokenId, onSuccess }: CreateTokenF
   const [dimensiones, setDimensiones] = useState("")
   const [acabado, setAcabado] = useState("")
 
+  // Populate fields when entering edit mode
+  useEffect(() => {
+    if (!editToken) return
+    setName(editToken.name)
+    setTotalSupply(editToken.parentId === 0n ? fmtRaw(editToken.totalSupply) : editToken.totalSupply.toString())
+    const f = parseFeatures(editToken.features)
+    if (editToken.parentId === 0n) {
+      setCalidad(f.calidad ?? "")
+      setEspesor(f.espesor ?? "")
+      setCertificado(f.certificado ?? "")
+      setLote(f.lote ?? "")
+    } else {
+      setProductType(f.tipo ?? "")
+      setMaterial(f.material ?? "")
+      setDimensiones(f.dimensiones ?? "")
+      setAcabado(f.acabado ?? "")
+    }
+  }, [editToken])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!contract) return
-    if (!name || !totalSupply) {
-      toast.error("Nombre y cantidad son obligatorios")
-      return
-    }
-
-    const supply = parseInt(totalSupply)
-    if (isNaN(supply) || supply <= 0) {
-      toast.error("La cantidad debe ser un número positivo")
+    if (!name) {
+      toast.error("El nombre es obligatorio")
       return
     }
 
     let features: Record<string, string>
     let parentId: number
 
-    if (mode === "rawmaterial") {
+    if (effectiveMode === "rawmaterial") {
       features = { calidad, espesor, certificado, lote }
       parentId = 0
     } else {
@@ -62,55 +96,88 @@ export function CreateTokenForm({ mode, parentTokenId, onSuccess }: CreateTokenF
         toast.error("Selecciona el tipo de producto")
         return
       }
-      if (!parentTokenId) {
+      if (!isEditMode && !parentTokenId) {
         toast.error("Selecciona la lámina de origen")
         return
       }
       features = { tipo: productType, material, dimensiones, acabado }
-      parentId = Number(parentTokenId)
+      parentId = parentTokenId ? Number(parentTokenId) : Number(editToken?.parentId ?? 0)
     }
 
     setLoading(true)
     try {
-      await createToken(contract, name, supply, JSON.stringify(features), parentId)
-      toast.success("Token creado correctamente")
-      setName("")
-      setTotalSupply("")
-      setCalidad("")
-      setEspesor("")
-      setCertificado("")
-      setLote("")
-      setProductType("")
-      setMaterial("")
-      setDimensiones("")
-      setAcabado("")
-      onSuccess?.()
+      if (isEditMode && editToken) {
+        await updateToken(contract, editToken.id, name, JSON.stringify(features))
+        toast.success("Producto actualizado correctamente")
+      } else {
+        const supplyFloat = parseFloat(totalSupply)
+        if (isNaN(supplyFloat) || supplyFloat <= 0) {
+          toast.error("La cantidad debe ser un número positivo")
+          setLoading(false)
+          return
+        }
+        const supply = effectiveMode === "rawmaterial"
+          ? Math.round(supplyFloat * SCALE_FACTOR)
+          : Math.round(supplyFloat)
+        await createToken(contract, name, supply, JSON.stringify(features), parentId)
+        toast.success("Producto creado correctamente")
+      }
+      resetFields()
+      await onSuccess?.()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error al crear token")
+      toast.error(e instanceof Error ? e.message : "Error al guardar producto")
     } finally {
       setLoading(false)
     }
   }
 
+  const resetFields = () => {
+    setName("")
+    setTotalSupply("")
+    setCalidad("")
+    setEspesor("")
+    setCertificado("")
+    setLote("")
+    setProductType("")
+    setMaterial("")
+    setDimensiones("")
+    setAcabado("")
+  }
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{mode === "rawmaterial" ? "Nueva lámina de hierro" : "Nuevo producto"}</CardTitle>
+        <CardTitle>Datos Del Producto</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="name">Nombre</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder={mode === "rawmaterial" ? "Lámina HR-2024-01" : "Puerta blindada modelo A"} />
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={effectiveMode === "rawmaterial" ? "Lámina HR-2024-01" : "Puerta blindada modelo A"}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="supply">Cantidad</Label>
-              <Input id="supply" type="number" min="1" value={totalSupply} onChange={(e) => setTotalSupply(e.target.value)} placeholder="100" />
+              <Input
+                id="supply"
+                type="number"
+                min={effectiveMode === "rawmaterial" ? "0.01" : "1"}
+                step={effectiveMode === "rawmaterial" ? "0.01" : "1"}
+                value={totalSupply}
+                onChange={(e) => setTotalSupply(e.target.value)}
+                placeholder="100"
+                disabled={isEditMode}
+                className={isEditMode ? "opacity-60 cursor-not-allowed" : ""}
+              />
             </div>
           </div>
 
-          {mode === "rawmaterial" ? (
+          {effectiveMode === "rawmaterial" ? (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Calidad</Label>
@@ -132,10 +199,15 @@ export function CreateTokenForm({ mode, parentTokenId, onSuccess }: CreateTokenF
           ) : (
             <>
               <div className="space-y-1.5">
-                <Label>Tipo de producto</Label>
-                <Select onValueChange={(v) => typeof v === "string" && setProductType(v)}>
+                <Label>Tipo De Producto</Label>
+                <Select value={productType} onValueChange={(v) => typeof v === "string" && setProductType(v)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecciona tipo..." />
+                    <SelectValue>
+                      {productType
+                        ? <span className="capitalize">{productType}</span>
+                        : <span className="text-muted-foreground">Selecciona tipo...</span>
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {PRODUCT_TYPES.map((t) => (
@@ -161,9 +233,16 @@ export function CreateTokenForm({ mode, parentTokenId, onSuccess }: CreateTokenF
             </>
           )}
 
-          <Button type="submit" disabled={loading} className="w-full">
-            {loading ? "Creando..." : "Crear token"}
-          </Button>
+          <div className="flex gap-3">
+            <Button type="submit" disabled={loading} className="flex-1">
+              {loading ? "Guardando..." : isEditMode ? "Modificar Producto" : "Crear producto"}
+            </Button>
+            {onCancel && (
+              <Button type="button" variant="outline" disabled={loading} onClick={onCancel}>
+                Cancelar
+              </Button>
+            )}
+          </div>
         </form>
       </CardContent>
     </Card>

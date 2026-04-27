@@ -2,6 +2,7 @@
 
 import { BomTemplate } from "@/hooks/useBomTemplates"
 import { TokenWithBalance } from "@/hooks/useTokens"
+import { SCALE_FACTOR, fmtRaw } from "@/contracts/config"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -19,7 +20,8 @@ interface BomTemplateListProps {
 function canFulfill(template: BomTemplate, rawMaterials: TokenWithBalance[], qty: number): boolean {
   return template.items.every((item) => {
     const token = rawMaterials.find((t) => t.id.toString() === item.tokenId)
-    return token && token.balance >= BigInt(item.amountPerUnit * qty)
+    const needed = BigInt(Math.round(item.amountPerUnit * qty * SCALE_FACTOR))
+    return token && token.balance >= needed
   })
 }
 
@@ -61,10 +63,10 @@ export function BomTemplateList({
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="text-xs space-y-1">
-                <p className="text-muted-foreground font-medium uppercase tracking-wide">Por unidad de producto:</p>
+                <p className="text-muted-foreground font-medium uppercase tracking-wide">Por Unidad De Producto:</p>
                 {template.items.map((item) => {
                   const token = rawMaterials.find((t) => t.id.toString() === item.tokenId)
-                  const sufficient = token && token.balance >= BigInt(item.amountPerUnit)
+                  const sufficient = token && token.balance >= BigInt(Math.round(item.amountPerUnit * SCALE_FACTOR))
                   return (
                     <div key={item.tokenId} className="flex justify-between">
                       <span className={sufficient ? "" : "text-destructive"}>
@@ -83,7 +85,7 @@ export function BomTemplateList({
 
               <div className="flex gap-2 flex-wrap pt-1">
                 <Button size="sm" onClick={() => onUse(template)} disabled={!canMakeOne} className="flex-1">
-                  Usar estructura
+                  Usar Estructura
                 </Button>
                 {owner && (
                   <>

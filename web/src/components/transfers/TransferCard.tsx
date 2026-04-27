@@ -1,14 +1,16 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Transfer } from "@/services/Web3Service"
 import { useWeb3 } from "@/contexts/Web3Context"
+import { fmtRaw } from "@/contracts/config"
 
 interface TransferCardProps {
   transfer: Transfer
   tokenName?: string
+  tokenIsRaw?: boolean
   onAccept?: (id: bigint) => void
   onReject?: (id: bigint) => void
 }
@@ -24,51 +26,70 @@ function shortAddr(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`
 }
 
-export function TransferCard({ transfer, tokenName, onAccept, onReject }: TransferCardProps) {
+export function TransferCard({ transfer, tokenName, tokenIsRaw, onAccept, onReject }: TransferCardProps) {
   const { account } = useWeb3()
   const isIncoming = transfer.to.toLowerCase() === account?.toLowerCase()
   const isPending = transfer.status === 0
 
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-base">
-            {tokenName ?? `Token #${transfer.tokenId.toString()}`}
-          </CardTitle>
-          <Badge variant={STATUS_VARIANT[transfer.status]}>
-            {STATUS_LABEL[transfer.status]}
-          </Badge>
-        </div>
-        <p className="text-xs text-muted-foreground">ID transferencia: #{transfer.id.toString()}</p>
-      </CardHeader>
+      <CardContent className="py-3 px-4">
+        <div className="flex items-center gap-6 flex-wrap">
 
-      <CardContent className="space-y-3">
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-          <span className="text-muted-foreground">De</span>
-          <span className="font-mono text-xs">{shortAddr(transfer.from)}</span>
-          <span className="text-muted-foreground">Para</span>
-          <span className="font-mono text-xs">{shortAddr(transfer.to)}</span>
-          <span className="text-muted-foreground">Cantidad</span>
-          <span>{transfer.amount.toString()}</span>
-          <span className="text-muted-foreground">Fecha</span>
-          <span>{new Date(Number(transfer.dateCreated) * 1000).toLocaleDateString()}</span>
-        </div>
-
-        {isIncoming && isPending && (onAccept || onReject) && (
-          <div className="flex gap-2 pt-1">
-            {onAccept && (
-              <Button size="sm" onClick={() => onAccept(transfer.id)} className="flex-1">
-                Aceptar
-              </Button>
-            )}
-            {onReject && (
-              <Button size="sm" variant="destructive" onClick={() => onReject(transfer.id)} className="flex-1">
-                Rechazar
-              </Button>
-            )}
+          {/* Nombre del producto + ID + estado */}
+          <div className="min-w-[180px] flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-sm">
+                {tokenName ?? `Token #${transfer.tokenId.toString()}`}
+              </span>
+              <Badge variant={STATUS_VARIANT[transfer.status]}>
+                {STATUS_LABEL[transfer.status]}
+              </Badge>
+              <Badge variant="outline" className="text-xs">
+                {isIncoming ? "Recibida" : "Enviada"}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground font-mono mt-0.5">
+              Transferencia #{transfer.id.toString()}
+            </p>
           </div>
-        )}
+
+          {/* Columnas de datos */}
+          <div className="flex gap-6 text-sm shrink-0 flex-wrap">
+            <div>
+              <p className="text-xs text-muted-foreground">De</p>
+              <p className="font-mono font-medium text-xs">{shortAddr(transfer.from)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Para</p>
+              <p className="font-mono font-medium text-xs">{shortAddr(transfer.to)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Cantidad</p>
+              <p className="font-semibold">{tokenIsRaw ? fmtRaw(transfer.amount) : transfer.amount.toString()}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Fecha</p>
+              <p className="font-medium">{new Date(Number(transfer.dateCreated) * 1000).toLocaleDateString()}</p>
+            </div>
+          </div>
+
+          {/* Acciones */}
+          {isIncoming && isPending && (onAccept || onReject) && (
+            <div className="flex gap-2 shrink-0 ml-auto">
+              {onAccept && (
+                <Button size="sm" onClick={() => onAccept(transfer.id)}>
+                  Aceptar
+                </Button>
+              )}
+              {onReject && (
+                <Button size="sm" variant="destructive" onClick={() => onReject(transfer.id)}>
+                  Rechazar
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   )

@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Supply Chain Tracker",
+  title: "Metal Trace",
   description: "Trazabilidad blockchain para cadena de suministro industrial",
 };
 

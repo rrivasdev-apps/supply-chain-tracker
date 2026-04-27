@@ -28,7 +28,9 @@ export function useTokens() {
       )
       setTokens(withBalances)
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error al cargar tokens")
+      const msg = e instanceof Error ? e.message : "Error al cargar tokens"
+      setError(msg)
+      throw new Error(msg)
     } finally {
       setLoading(false)
     }

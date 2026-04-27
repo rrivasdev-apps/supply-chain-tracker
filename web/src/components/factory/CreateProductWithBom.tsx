@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
+import { SCALE_FACTOR, fmtRaw } from "@/contracts/config"
 
 interface CreateProductWithBomProps {
   template: BomTemplate
@@ -20,9 +21,18 @@ interface CreateProductWithBomProps {
   onCancel: () => void
 }
 
+// Convierte cantidad real a on-chain (×SCALE_FACTOR). Sin pérdida para hasta 2 decimales.
+function toOnChainAmount(floatTotal: number): { onChain: bigint; display: string } {
+  const onChainNum = Math.round(floatTotal * SCALE_FACTOR)
+  return {
+    onChain: BigInt(onChainNum),
+    display: floatTotal % 1 === 0 ? floatTotal.toString() : floatTotal.toFixed(2),
+  }
+}
+
 export function CreateProductWithBom({ template, rawMaterials, onSuccess, onCancel }: CreateProductWithBomProps) {
   const { contract } = useWeb3()
-  const [productName, setProductName] = useState(`${template.name}`)
+  const [productName, setProductName] = useState(template.name)
   const [quantity, setQuantity] = useState("1")
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState<"idle" | "consuming" | "creating">("idle")
@@ -31,14 +41,18 @@ export function CreateProductWithBom({ template, rawMaterials, onSuccess, onCanc
 
   const consumption = template.items.map((item) => {
     const token = rawMaterials.find((t) => t.id.toString() === item.tokenId)
-    const total = item.amountPerUnit * qty
-    const available = token ? Number(token.balance) : 0
+    const floatTotal = item.amountPerUnit * qty
+    const { onChain, display } = toOnChainAmount(floatTotal)
+    const availableOnChain = token ? token.balance : 0n
     return {
       ...item,
       token,
-      totalConsumed: total,
-      available,
-      sufficient: available >= total,
+      floatTotal,
+      onChainAmount: onChain,
+      displayTotal: display,
+      availableOnChain,
+      availableDisplay: token ? fmtRaw(token.balance) : "0",
+      sufficient: availableOnChain >= onChain,
     }
   })
 
@@ -52,20 +66,22 @@ export function CreateProductWithBom({ template, rawMaterials, onSuccess, onCanc
     setLoading(true)
 
     try {
-      // Paso 1: consumir todas las materias primas
       setStep("consuming")
       for (const item of consumption) {
-        toast.info(`Consumiendo ${item.totalConsumed} ud de ${item.tokenName}...`)
-        await consumeRawMaterial(contract, BigInt(item.tokenId), BigInt(item.totalConsumed))
+        toast.info(`Consumiendo ${item.onChainAmount} ud de ${item.tokenName}...`)
+        await consumeRawMaterial(contract, BigInt(item.tokenId), item.onChainAmount)
       }
 
-      // Paso 2: crear el producto con el BOM serializado en features
       setStep("creating")
       toast.info("Creando tokens de producto...")
       const features = JSON.stringify({
         tipo: template.productType,
         estructura: template.name,
-        bom: template.items.map((i) => ({ material: i.tokenName, tokenId: i.tokenId, porUnidad: i.amountPerUnit })),
+        bom: template.items.map((i) => ({
+          material: i.tokenName,
+          tokenId: i.tokenId,
+          porUnidad: i.amountPerUnit,
+        })),
       })
       await createToken(contract, productName.trim(), qty, features, parentId)
 
@@ -79,7 +95,9 @@ export function CreateProductWithBom({ template, rawMaterials, onSuccess, onCanc
     }
   }
 
-  const stepLabel = step === "consuming" ? "Consumiendo materiales..." : step === "creating" ? "Creando tokens..." : "Fabricar"
+  const stepLabel =
+    step === "consuming" ? "Consumiendo materiales..." :
+    step === "creating"  ? "Creando tokens..." : "Fabricar"
 
   return (
     <Card>
@@ -95,14 +113,15 @@ export function CreateProductWithBom({ template, rawMaterials, onSuccess, onCanc
       <CardContent className="space-y-5">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label>Nombre del producto</Label>
+            <Label>Nombre Del Producto</Label>
             <Input value={productName} onChange={(e) => setProductName(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>Cantidad a producir</Label>
+            <Label>Cantidad A Producir</Label>
             <Input
               type="number"
               min="1"
+              step="1"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
             />
@@ -112,7 +131,7 @@ export function CreateProductWithBom({ template, rawMaterials, onSuccess, onCanc
         <Separator />
 
         <div className="space-y-2">
-          <p className="text-sm font-medium">Consumo total de materiales</p>
+          <p className="text-sm font-medium">Consumo Total De Materiales</p>
           <div className="rounded-md border text-sm divide-y">
             {consumption.map((c) => (
               <div key={c.tokenId} className="flex items-center justify-between px-3 py-2">
@@ -121,16 +140,16 @@ export function CreateProductWithBom({ template, rawMaterials, onSuccess, onCanc
                     {c.tokenName}
                   </span>
                   <span className="text-muted-foreground text-xs ml-2">
-                    ({c.amountPerUnit} ud/producto × {qty})
+                    ({c.amountPerUnit} × {qty})
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className={`font-mono font-semibold ${c.sufficient ? "text-foreground" : "text-destructive"}`}>
-                    {c.totalConsumed} ud
+                  <span className={`font-mono font-semibold ${c.sufficient ? "" : "text-destructive"}`}>
+                    {c.displayTotal} ud
                   </span>
                   <div className="text-xs text-muted-foreground">
-                    disponible: {c.available}
-                    {!c.sufficient && ` · faltan ${c.totalConsumed - c.available}`}
+                    disponible: {c.availableDisplay}
+                    {!c.sufficient && ` · insuficiente`}
                   </div>
                 </div>
               </div>
@@ -138,21 +157,9 @@ export function CreateProductWithBom({ template, rawMaterials, onSuccess, onCanc
           </div>
           {!allSufficient && qty > 0 && (
             <p className="text-xs text-destructive">
-              No tienes materiales suficientes para producir {qty} unidades.
+              Material insuficiente para producir {qty} unidades.
             </p>
           )}
-        </div>
-
-        <div className="bg-muted rounded-md p-3 text-sm space-y-1">
-          <p className="font-medium">Resumen</p>
-          <div className="flex justify-between text-muted-foreground">
-            <span>Material de referencia (parentId)</span>
-            <span className="font-mono">#{parentId} · {primaryMaterial?.tokenName}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Tokens a generar</span>
-            <span className="font-semibold">{qty > 0 ? qty : "—"}</span>
-          </div>
         </div>
 
         <div className="flex gap-2">

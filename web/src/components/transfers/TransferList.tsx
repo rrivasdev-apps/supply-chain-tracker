@@ -7,17 +7,18 @@ interface TransferListProps {
   transfers: Transfer[]
   loading: boolean
   tokenNames?: Record<string, string>
+  tokenIsRawMap?: Record<string, boolean>
   onAccept?: (id: bigint) => void
   onReject?: (id: bigint) => void
   emptyMessage?: string
 }
 
-export function TransferList({ transfers, loading, tokenNames, onAccept, onReject, emptyMessage }: TransferListProps) {
+export function TransferList({ transfers, loading, tokenNames, tokenIsRawMap, onAccept, onReject, emptyMessage }: TransferListProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="flex flex-col gap-2">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-40 rounded-lg bg-muted animate-pulse" />
+          <div key={i} className="h-16 rounded-lg bg-muted animate-pulse" />
         ))}
       </div>
     )
@@ -32,12 +33,13 @@ export function TransferList({ transfers, loading, tokenNames, onAccept, onRejec
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+    <div className="flex flex-col gap-2">
       {transfers.map((t) => (
         <TransferCard
           key={t.id.toString()}
           transfer={t}
           tokenName={tokenNames?.[t.tokenId.toString()]}
+          tokenIsRaw={tokenIsRawMap?.[t.tokenId.toString()]}
           onAccept={onAccept}
           onReject={onReject}
         />

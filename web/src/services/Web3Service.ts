@@ -112,6 +112,16 @@ export async function createToken(
   return tx.wait()
 }
 
+export async function updateToken(
+  contract: ethers.Contract,
+  tokenId: bigint,
+  name: string,
+  features: string
+): Promise<ethers.TransactionReceipt> {
+  const tx = await contract.updateToken(tokenId, name, features)
+  return tx.wait()
+}
+
 export async function burnToken(
   contract: ethers.Contract,
   tokenId: bigint

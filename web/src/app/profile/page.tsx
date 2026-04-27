@@ -40,12 +40,12 @@ export default function ProfilePage() {
     <div className="flex flex-1">
       <Sidebar />
       <main className="flex-1 p-6 space-y-6 max-w-2xl">
-        <h1 className="text-2xl font-bold">Mi perfil</h1>
+        <h1 className="text-2xl font-bold">Mi Perfil</h1>
 
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Información de cuenta</CardTitle>
+              <CardTitle className="text-base">Información De Cuenta</CardTitle>
               <Button variant="outline" size="sm" onClick={refreshUser}>Actualizar</Button>
             </div>
           </CardHeader>
@@ -77,7 +77,7 @@ export default function ProfilePage() {
             <div className="grid grid-cols-3 gap-4 text-center text-sm">
               <div>
                 <div className="text-2xl font-bold">{tokens.length}</div>
-                <div className="text-muted-foreground">Tokens totales</div>
+                <div className="text-muted-foreground">Tokens Totales</div>
               </div>
               <div>
                 <div className="text-2xl font-bold">{activeTokens}</div>
@@ -94,13 +94,13 @@ export default function ProfilePage() {
             <div className="grid grid-cols-2 gap-4 text-center text-sm">
               <div>
                 <div className="text-2xl font-bold">{transfers.length}</div>
-                <div className="text-muted-foreground">Transferencias totales</div>
+                <div className="text-muted-foreground">Transferencias Totales</div>
               </div>
               <div>
                 <div className="text-2xl font-bold">
                   {transfers.filter((t) => t.status === 0 && t.to.toLowerCase() === account?.toLowerCase()).length}
                 </div>
-                <div className="text-muted-foreground">Pendientes de aceptar</div>
+                <div className="text-muted-foreground">Pendientes De Aceptar</div>
               </div>
             </div>
           </CardContent>
@@ -127,7 +127,7 @@ export default function ProfilePage() {
         </Card>
 
         <Button variant="destructive" onClick={disconnectWallet} className="w-full">
-          Desconectar wallet
+          Desconectar Wallet
         </Button>
       </main>
     </div>

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { fmtRaw } from "@/contracts/config"
 
 const PRODUCT_TYPES = ["puerta", "reja", "marco", "panel", "otro"]
 
@@ -39,7 +40,7 @@ export function BomEditor({ rawMaterials, initial, onSave, onCancel }: BomEditor
 
   const addItem = () => {
     if (!selectedTokenId || !selectedAmt) return
-    const amt = Number(selectedAmt)
+    const amt = parseFloat(selectedAmt)
     if (isNaN(amt) || amt <= 0) return
 
     const token = rawMaterials.find((t) => t.id.toString() === selectedTokenId)
@@ -69,24 +70,36 @@ export function BomEditor({ rawMaterials, initial, onSave, onCancel }: BomEditor
 
   const isValid = name.trim() && productType && items.length > 0
 
+  const selectedToken = rawMaterials.find((t) => t.id.toString() === selectedTokenId)
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">
-          {initial ? "Editar estructura de producto" : "Nueva estructura de producto"}
+          {initial ? "Editar Estructura De Producto" : "Nueva Estructura De Producto"}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label>Nombre de la estructura</Label>
+            <Label>Nombre De La Estructura</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Puerta Blindada M90" />
           </div>
           <div className="space-y-1.5">
-            <Label>Tipo de producto</Label>
-            <Select onValueChange={(v) => typeof v === "string" && setProductType(v)} value={productType || undefined}>
+            <Label>Tipo De Producto</Label>
+            {/* value siempre string para mantener el componente controlado */}
+            <Select
+              value={productType}
+              onValueChange={(v) => typeof v === "string" && v && setProductType(v)}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Selecciona tipo..." />
+                <SelectValue>
+                  {productType ? (
+                    <span className="capitalize">{productType}</span>
+                  ) : (
+                    <span className="text-muted-foreground">Selecciona tipo...</span>
+                  )}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {PRODUCT_TYPES.map((t) => (
@@ -98,12 +111,12 @@ export function BomEditor({ rawMaterials, initial, onSave, onCancel }: BomEditor
         </div>
 
         <div className="space-y-1.5">
-          <Label>Descripción (opcional)</Label>
+          <Label>Descripción (Opcional)</Label>
           <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Descripción breve del producto..." />
         </div>
 
         <div className="space-y-3">
-          <Label>Materias primas por unidad de producto</Label>
+          <Label>Materias Primas Por Unidad De Producto</Label>
 
           {items.length > 0 && (
             <div className="rounded-md border divide-y text-sm">
@@ -116,12 +129,12 @@ export function BomEditor({ rawMaterials, initial, onSave, onCancel }: BomEditor
                       <span className="text-muted-foreground ml-2 text-xs">#{item.tokenId}</span>
                       {token && (
                         <Badge variant="outline" className="ml-2 text-xs">
-                          disponible: {token.balance.toString()}
+                          disp: {fmtRaw(token.balance)}
                         </Badge>
                       )}
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-sm font-semibold">{item.amountPerUnit} ud/producto</span>
+                      <span className="font-mono text-sm font-semibold">{item.amountPerUnit} ud</span>
                       <button
                         onClick={() => removeItem(item.tokenId)}
                         className="text-destructive hover:text-destructive/80 text-xs"
@@ -137,28 +150,40 @@ export function BomEditor({ rawMaterials, initial, onSave, onCancel }: BomEditor
 
           <div className="flex gap-2 items-end">
             <div className="flex-1 space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Materia prima</Label>
-              <Select onValueChange={(v) => typeof v === "string" && setSelectedTokenId(v)} value={selectedTokenId || undefined}>
+              <Label className="text-xs text-muted-foreground">Materia Prima</Label>
+              {/* Renderizamos el label del item seleccionado en SelectValue */}
+              <Select
+                value={selectedTokenId}
+                onValueChange={(v) => typeof v === "string" && setSelectedTokenId(v)}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecciona material..." />
+                  <SelectValue>
+                    {selectedToken ? (
+                      <span>#{selectedToken.id.toString()} · {selectedToken.name}</span>
+                    ) : (
+                      <span className="text-muted-foreground">Selecciona material...</span>
+                    )}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {rawMaterials.map((t) => (
                     <SelectItem key={t.id.toString()} value={t.id.toString()}>
-                      #{t.id.toString()} · {t.name} (disp: {t.balance.toString()})
+                      #{t.id.toString()} · {t.name}
+                      <span className="text-muted-foreground ml-2 text-xs">(disp: {fmtRaw(t.balance)})</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="w-36 space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Unidades/producto</Label>
+            <div className="w-40 space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Cantidad Por Unidad</Label>
               <Input
                 type="number"
-                min="1"
+                min="0.01"
+                step="0.01"
                 value={selectedAmt}
                 onChange={(e) => setSelectedAmt(e.target.value)}
-                placeholder="Ej: 3"
+                placeholder="Ej: 0.5"
               />
             </div>
             <Button type="button" variant="outline" onClick={addItem} disabled={!selectedTokenId || !selectedAmt}>
@@ -172,7 +197,7 @@ export function BomEditor({ rawMaterials, initial, onSave, onCancel }: BomEditor
 
         <div className="flex gap-2 pt-2">
           <Button onClick={handleSave} disabled={!isValid} className="flex-1">
-            Guardar estructura
+            Guardar Estructura
           </Button>
           <Button variant="outline" onClick={onCancel}>
             Cancelar
