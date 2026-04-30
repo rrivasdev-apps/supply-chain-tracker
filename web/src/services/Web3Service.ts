@@ -147,6 +147,39 @@ export async function redeemProduct(
   return tx.wait()
 }
 
+export interface Redemption {
+  consumer: string
+  consumerName: string
+  amount: bigint
+  timestamp: Date
+  txHash: string
+}
+
+export async function getRedemptions(
+  contract: ethers.Contract,
+  tokenId: bigint,
+  consumer: string
+): Promise<Redemption[]> {
+  const filter = contract.filters.ProductRedeemed(tokenId, consumer)
+  const events = await contract.queryFilter(filter)
+  return Promise.all(
+    events.map(async (ev) => {
+      const log = ev as ethers.EventLog
+      const consumer: string = log.args[1]
+      const amount: bigint = log.args[2]
+      const block = await ev.getBlock()
+      const info = await getUserInfo(contract, consumer)
+      return {
+        consumer,
+        consumerName: info?.name ?? consumer,
+        amount,
+        timestamp: new Date(block.timestamp * 1000),
+        txHash: ev.transactionHash,
+      }
+    })
+  )
+}
+
 export async function certifyToken(
   contract: ethers.Contract,
   tokenId: bigint,
