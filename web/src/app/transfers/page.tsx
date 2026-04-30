@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useWeb3 } from "@/contexts/Web3Context"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { useTransfers } from "@/hooks/useTransfers"
-import { useTokens } from "@/hooks/useTokens"
+import { useAllTokens } from "@/hooks/useAllTokens"
 import { TransferList } from "@/components/transfers/TransferList"
 import { acceptTransfer, rejectTransfer } from "@/services/Web3Service"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -14,21 +14,17 @@ import { toast } from "sonner"
 
 export default function TransfersPage() {
   const router = useRouter()
-  const { isConnected, userStatus, contract } = useWeb3()
+  const { isConnected, userStatus, userLoading, contract } = useWeb3()
   const { incoming, outgoing, pending, loading, refetch } = useTransfers()
-  const { tokens } = useTokens()
+  const { tokens } = useAllTokens()
 
   useEffect(() => {
+    if (userLoading) return
     if (!isConnected || userStatus !== 1) router.push("/")
-  }, [isConnected, userStatus, router])
+  }, [isConnected, userStatus, userLoading, router])
 
-  const tokenNames = tokens.reduce<Record<string, string>>((acc, t) => {
-    acc[t.id.toString()] = t.name
-    return acc
-  }, {})
-
-  const tokenIsRawMap = tokens.reduce<Record<string, boolean>>((acc, t) => {
-    acc[t.id.toString()] = t.parentId === 0n
+  const tokenMap = tokens.reduce<Record<string, typeof tokens[0]>>((acc, t) => {
+    acc[t.id.toString()] = t
     return acc
   }, {})
 
@@ -83,8 +79,7 @@ export default function TransfersPage() {
             <TransferList
               transfers={incoming}
               loading={loading}
-              tokenNames={tokenNames}
-              tokenIsRawMap={tokenIsRawMap}
+              tokenMap={tokenMap}
               onAccept={handleAccept}
               onReject={handleReject}
               emptyMessage="No tienes transferencias recibidas."
@@ -95,8 +90,7 @@ export default function TransfersPage() {
             <TransferList
               transfers={outgoing}
               loading={loading}
-              tokenNames={tokenNames}
-              tokenIsRawMap={tokenIsRawMap}
+              tokenMap={tokenMap}
               emptyMessage="No has enviado transferencias."
             />
           </TabsContent>

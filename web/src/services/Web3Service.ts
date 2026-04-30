@@ -10,6 +10,7 @@ export type TransferStatus = 0 | 1 | 2
 export interface UserInfo {
   id: bigint
   addr: string
+  name: string        // nombre o razón social
   role: string
   status: UserStatus
 }
@@ -23,6 +24,7 @@ export interface Token {
   parentId: bigint
   dateCreated: bigint
   burned: boolean
+  certified: boolean  // solo aplica a bobinas (parentId === 0n)
 }
 
 export interface Transfer {
@@ -39,14 +41,17 @@ export function getContract(signerOrProvider: ethers.Signer | ethers.Provider) {
   return new ethers.Contract(CONTRACT_ADDRESS, ABI, signerOrProvider)
 }
 
+// ─── USER ─────────────────────────────────────────────────────────────────────
+
 export async function getUserInfo(contract: ethers.Contract, address: string): Promise<UserInfo | null> {
   try {
     const result = await contract.getUserInfo(address)
     return {
-      id: result[0],
-      addr: result[1],
-      role: result[2],
-      status: Number(result[3]) as UserStatus,
+      id:     result[0],
+      addr:   result[1],
+      name:   result[2],
+      role:   result[3],
+      status: Number(result[4]) as UserStatus,
     }
   } catch {
     return null
@@ -61,8 +66,12 @@ export async function isAdmin(contract: ethers.Contract, address: string): Promi
   }
 }
 
-export async function requestUserRole(contract: ethers.Contract, role: string): Promise<ethers.TransactionReceipt> {
-  const tx = await contract.requestUserRole(role)
+export async function requestUserRole(
+  contract: ethers.Contract,
+  name: string,
+  role: string
+): Promise<ethers.TransactionReceipt> {
+  const tx = await contract.requestUserRole(name, role)
   return tx.wait()
 }
 
@@ -75,17 +84,20 @@ export async function changeStatusUser(
   return tx.wait()
 }
 
+// ─── TOKEN ────────────────────────────────────────────────────────────────────
+
 export async function getToken(contract: ethers.Contract, tokenId: bigint): Promise<Token> {
   const result = await contract.getToken(tokenId)
   return {
-    id: result[0],
-    creator: result[1],
-    name: result[2],
+    id:          result[0],
+    creator:     result[1],
+    name:        result[2],
     totalSupply: result[3],
-    features: result[4],
-    parentId: result[5],
+    features:    result[4],
+    parentId:    result[5],
     dateCreated: result[6],
-    burned: result[7],
+    burned:      result[7],
+    certified:   result[8],
   }
 }
 
@@ -95,10 +107,6 @@ export async function getTokenBalance(
   address: string
 ): Promise<bigint> {
   return contract.getTokenBalance(tokenId, address)
-}
-
-export async function getUserTokens(contract: ethers.Contract, address: string): Promise<bigint[]> {
-  return contract.getUserTokens(address)
 }
 
 export async function createToken(
@@ -130,6 +138,51 @@ export async function burnToken(
   return tx.wait()
 }
 
+export async function redeemProduct(
+  contract: ethers.Contract,
+  tokenId: bigint,
+  amount: bigint
+): Promise<ethers.TransactionReceipt> {
+  const tx = await contract.redeemProduct(tokenId, amount)
+  return tx.wait()
+}
+
+export async function certifyToken(
+  contract: ethers.Contract,
+  tokenId: bigint,
+  certNumber: string
+): Promise<ethers.TransactionReceipt> {
+  const tx = await contract.certifyToken(tokenId, certNumber)
+  return tx.wait()
+}
+
+export interface CertificationInfo {
+  certifier: string
+  certifierName: string
+  certNumber: string
+  timestamp: Date
+}
+
+export async function getCertificationInfo(
+  contract: ethers.Contract,
+  tokenId: bigint
+): Promise<CertificationInfo | null> {
+  const filter = contract.filters.TokenCertified(tokenId)
+  const events = await contract.queryFilter(filter)
+  if (events.length === 0) return null
+  const ev = events[0] as ethers.EventLog
+  const certifier: string = ev.args[1]
+  const certNumber: string = ev.args[2]
+  const block = await ev.getBlock()
+  const info = await getUserInfo(contract, certifier)
+  return {
+    certifier,
+    certifierName: info?.name ?? certifier,
+    certNumber,
+    timestamp: new Date(block.timestamp * 1000),
+  }
+}
+
 export async function consumeRawMaterial(
   contract: ethers.Contract,
   tokenId: bigint,
@@ -138,6 +191,8 @@ export async function consumeRawMaterial(
   const tx = await contract.consumeRawMaterial(tokenId, amount)
   return tx.wait()
 }
+
+// ─── TRANSFER ─────────────────────────────────────────────────────────────────
 
 export async function transfer(
   contract: ethers.Contract,
@@ -168,25 +223,48 @@ export async function rejectTransfer(
 export async function getTransfer(contract: ethers.Contract, transferId: bigint): Promise<Transfer> {
   const result = await contract.getTransfer(transferId)
   return {
-    id: result[0],
-    from: result[1],
-    to: result[2],
-    tokenId: result[3],
+    id:          result[0],
+    from:        result[1],
+    to:          result[2],
+    tokenId:     result[3],
     dateCreated: result[4],
-    amount: result[5],
-    status: Number(result[6]) as TransferStatus,
+    amount:      result[5],
+    status:      Number(result[6]) as TransferStatus,
   }
+}
+
+// ─── INDEX QUERIES ────────────────────────────────────────────────────────────
+
+export async function getUserTokenIds(contract: ethers.Contract, address: string): Promise<bigint[]> {
+  return contract.getUserTokenIds(address)
+}
+
+export async function getAllTokenIds(contract: ethers.Contract): Promise<bigint[]> {
+  return contract.getAllTokenIds()
 }
 
 export async function getUserTransfers(contract: ethers.Contract, address: string): Promise<bigint[]> {
   return contract.getUserTransfers(address)
 }
 
-export async function getAllUserTokens(
+export async function getAllUserIds(contract: ethers.Contract): Promise<bigint[]> {
+  return contract.getAllUserIds()
+}
+
+export async function getUserAddressesByRole(
+  contract: ethers.Contract,
+  role: string
+): Promise<string[]> {
+  return contract.getUserAddressesByRole(role)
+}
+
+// ─── BATCH HELPERS ────────────────────────────────────────────────────────────
+
+export async function getUserTokens(
   contract: ethers.Contract,
   address: string
 ): Promise<Token[]> {
-  const ids: bigint[] = await getUserTokens(contract, address)
+  const ids: bigint[] = await getUserTokenIds(contract, address)
   return Promise.all(ids.map((id) => getToken(contract, id)))
 }
 
@@ -196,4 +274,33 @@ export async function getAllUserTransfers(
 ): Promise<Transfer[]> {
   const ids: bigint[] = await getUserTransfers(contract, address)
   return Promise.all(ids.map((id) => getTransfer(contract, id)))
+}
+
+export async function getAllTokens(contract: ethers.Contract): Promise<Token[]> {
+  const ids: bigint[] = await getAllTokenIds(contract)
+  return Promise.all(ids.map((id) => getToken(contract, id)))
+}
+
+export async function getAllUsers(contract: ethers.Contract): Promise<UserInfo[]> {
+  const ids: bigint[] = await getAllUserIds(contract)
+  const users = await Promise.all(
+    ids.map(async (id) => {
+      try {
+        const u = await contract.users(id)
+        return await getUserInfo(contract, u.userAddress)
+      } catch {
+        return null
+      }
+    })
+  )
+  return users.filter((u): u is UserInfo => u !== null)
+}
+
+export async function getApprovedUsersByRole(
+  contract: ethers.Contract,
+  role: string
+): Promise<UserInfo[]> {
+  const addresses: string[] = await getUserAddressesByRole(contract, role)
+  const users = await Promise.all(addresses.map((addr) => getUserInfo(contract, addr)))
+  return users.filter((u): u is UserInfo => u !== null && u.status === 1)
 }

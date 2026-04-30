@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useWeb3 } from "@/contexts/Web3Context"
-import { getAllUserTokens, getTokenBalance, Token } from "@/services/Web3Service"
+import { getUserTokens, getTokenBalance, Token } from "@/services/Web3Service"
 
 export interface TokenWithBalance extends Token {
   balance: bigint
@@ -19,9 +19,9 @@ export function useTokens() {
     setLoading(true)
     setError(null)
     try {
-      const raw = await getAllUserTokens(contract, account)
+      const raw = await getUserTokens(contract, account)
       const withBalances = await Promise.all(
-        raw.map(async (token) => {
+        raw.map(async (token: Token) => {
           const balance = await getTokenBalance(contract, token.id, account)
           return { ...token, balance }
         })

@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-/// @title SupplyChain - Trazabilidad Industrial de Láminas de Hierro
-/// @notice Gestiona el flujo completo: Fundición → Fábrica → Retailer → Consumer
-/// @dev Los tokens con parentId == 0 son materias primas (láminas).
-///      Los tokens con parentId > 0 son productos terminados (puertas, rejas, etc.)
+/// @title SupplyChain — Metal Trace
+/// @notice Flujo: Fundición (producer) → Certificador (certifier) → Fábrica (factory)
+///         → Distribuidor (retailer) → Cliente (consumer)
+/// @dev Bobinas: parentId == 0, deben estar certified == true para transferirse.
+///      Láminas: parentId > 0, no requieren certificación.
 contract SupplyChain {
 
     // =========================================================================
     // ENUMS
     // =========================================================================
 
-    enum UserStatus    { Pending, Approved, Rejected, Canceled }
+    enum UserStatus     { Pending, Approved, Rejected, Canceled }
     enum TransferStatus { Pending, Accepted, Rejected }
 
     // =========================================================================
@@ -23,10 +24,11 @@ contract SupplyChain {
         address creator;
         string  name;
         uint256 totalSupply;
-        string  features;   // JSON libre: calidad lámina ó tipo/subtipo producto
-        uint256 parentId;   // 0 = materia prima (lámina), >0 = producto terminado
+        string  features;    // JSON libre: características del lote
+        uint256 parentId;    // 0 = Bobina (materia prima), >0 = Lámina
         uint256 dateCreated;
-        bool    burned;     // true cuando el Consumer redime el producto
+        bool    burned;
+        bool    certified;   // Solo aplica a bobinas (parentId == 0)
         mapping(address => uint256) balance;
     }
 
@@ -43,7 +45,8 @@ contract SupplyChain {
     struct User {
         uint256    id;
         address    userAddress;
-        string     role;      // "producer" | "factory" | "retailer" | "consumer"
+        string     name;    // Nombre o razón social
+        string     role;    // "producer" | "certifier" | "factory" | "retailer" | "consumer"
         UserStatus status;
     }
 
@@ -62,8 +65,20 @@ contract SupplyChain {
     mapping(uint256 => User)     public users;
     mapping(address => uint256)  public addressToUserId;
 
-    // Índices auxiliares para consultas eficientes
+    // ── Índices de eficiencia ─────────────────────────────────────────────────
+    // Todos los tokenIds en orden cronológico de creación
+    uint256[] private _allTokenIds;
+
+    // Todos los userIds en orden de registro
+    uint256[] private _allUserIds;
+
+    // TokenIds por address (para filtrar producción de un productor específico)
     mapping(address => uint256[]) private _userTokenIds;
+
+    // Addresses por rol (para dropdowns de transferencia y consultas del certificador)
+    mapping(string => address[]) private _userAddressesByRole;
+
+    // TransferIds relacionados con cada usuario
     mapping(address => uint256[]) private _userTransferIds;
 
     // =========================================================================
@@ -78,7 +93,14 @@ contract SupplyChain {
         uint256 parentId
     );
     event TokenBurned(uint256 indexed tokenId, address indexed burner);
+    event ProductRedeemed(uint256 indexed tokenId, address indexed consumer, uint256 amount, uint256 indexed parentId);
     event TokenUpdated(uint256 indexed tokenId, string name, string features);
+    event TokenCertified(
+        uint256 indexed tokenId,
+        address indexed certifier,
+        string  certHash,
+        uint256 date
+    );
     event MaterialConsumed(address indexed factory, uint256 indexed tokenId, uint256 amount);
     event TransferRequested(
         uint256 indexed transferId,
@@ -89,11 +111,11 @@ contract SupplyChain {
     );
     event TransferAccepted(uint256 indexed transferId);
     event TransferRejected(uint256 indexed transferId);
-    event UserRoleRequested(address indexed user, string role);
+    event UserRoleRequested(address indexed user, string name, string role);
     event UserStatusChanged(address indexed user, UserStatus status);
 
     // =========================================================================
-    // ERRORS  (gas-efficient vs require strings)
+    // ERRORS
     // =========================================================================
 
     error NotAdmin();
@@ -111,11 +133,15 @@ contract SupplyChain {
     error ZeroAmount();
     error TokenAlreadyBurned();
     error OnlyConsumerCanBurn();
+    error NotProduct();            // solo láminas (parentId > 0) pueden redimirse parcialmente
     error ParentTokenNotFound();
     error ParentTokenBurned();
     error NotFactory();
     error NotRawMaterial();
     error NotTokenCreator();
+    error TokenNotCertified();      // bobina aún no certificada, no puede transferirse
+    error TokenNotCertifiable();    // no es bobina, o ya está certificada
+    error NotCertifier();           // caller no tiene rol certifier
 
     // =========================================================================
     // CONSTRUCTOR
@@ -146,8 +172,9 @@ contract SupplyChain {
     // =========================================================================
 
     /// @notice El usuario solicita un rol en el sistema
-    /// @param role Uno de: "producer", "factory", "retailer", "consumer"
-    function requestUserRole(string memory role) public {
+    /// @param name Nombre o razón social del solicitante
+    /// @param role Uno de: "producer", "certifier", "factory", "retailer", "consumer"
+    function requestUserRole(string memory name, string memory role) public {
         if (addressToUserId[msg.sender] != 0) revert AlreadyRegistered();
         _validateRole(role);
 
@@ -155,12 +182,16 @@ contract SupplyChain {
         users[uid] = User({
             id:          uid,
             userAddress: msg.sender,
+            name:        name,
             role:        role,
             status:      UserStatus.Pending
         });
         addressToUserId[msg.sender] = uid;
 
-        emit UserRoleRequested(msg.sender, role);
+        _allUserIds.push(uid);
+        _userAddressesByRole[role].push(msg.sender);
+
+        emit UserRoleRequested(msg.sender, name, role);
     }
 
     /// @notice Admin aprueba, rechaza o cancela un usuario
@@ -171,17 +202,18 @@ contract SupplyChain {
         emit UserStatusChanged(userAddress, newStatus);
     }
 
-    /// @notice Devuelve la info de un usuario por su address
+    /// @notice Devuelve la info completa de un usuario por su address
     function getUserInfo(address userAddress) public view returns (
         uint256 id,
         address userAddr,
+        string memory name,
         string memory role,
         UserStatus status
     ) {
         uint256 uid = addressToUserId[userAddress];
         if (uid == 0) revert UserNotFound();
         User storage u = users[uid];
-        return (u.id, u.userAddress, u.role, u.status);
+        return (u.id, u.userAddress, u.name, u.role, u.status);
     }
 
     /// @notice Verifica si una address es el admin
@@ -193,14 +225,11 @@ contract SupplyChain {
     // TOKEN MANAGEMENT
     // =========================================================================
 
-    /// @notice Crea un token (lámina o producto terminado)
-    /// @dev Auto-mint: el totalSupply completo se asigna al creador al instante.
-    ///      Para láminas (Producer): parentId = 0, features = JSON calidad libre.
-    ///      Para productos (Factory): parentId = tokenId de la lámina usada.
-    /// @param name          Nombre descriptivo del token
-    /// @param totalSupply   Cantidad total (unidades de lámina o productos)
-    /// @param features      JSON con características (calidad, tipo, subtipo, etc.)
-    /// @param parentId      0 para materias primas, tokenId de lámina para productos
+    /// @notice Crea un token (Bobina o Lámina)
+    /// @param name        Nombre del lote
+    /// @param totalSupply Cantidad total (escalada ×100 para Bobinas, entera para Láminas)
+    /// @param features    JSON libre con características
+    /// @param parentId    0 para Bobinas, tokenId de la Bobina origen para Láminas
     function createToken(
         string memory name,
         uint256 totalSupply,
@@ -212,17 +241,14 @@ contract SupplyChain {
         uint256 uid  = addressToUserId[msg.sender];
         string memory role = users[uid].role;
 
-        // Solo producer puede crear materias primas (parentId == 0)
         if (parentId == 0) {
+            // Solo Fundición (producer) crea Bobinas
             if (!_strEq(role, "producer")) revert InvalidRole();
         } else {
-            // Solo factory puede crear productos terminados (parentId > 0)
+            // Solo Fábrica (factory) crea Láminas
             if (!_strEq(role, "factory")) revert InvalidRole();
-            // El token padre debe existir y no estar quemado
-            if (tokens[parentId].id == 0) revert ParentTokenNotFound();
-            if (tokens[parentId].burned)  revert ParentTokenBurned();
-            // Nota: el balance del parentId es verificado por consumeRawMaterial()
-            // antes de llamar a createToken() cuando se usa el sistema de estructuras.
+            if (tokens[parentId].id == 0)  revert ParentTokenNotFound();
+            if (tokens[parentId].burned)   revert ParentTokenBurned();
         }
 
         uint256 tokenId = nextTokenId++;
@@ -235,25 +261,39 @@ contract SupplyChain {
         t.parentId    = parentId;
         t.dateCreated = block.timestamp;
         t.burned      = false;
+        t.certified   = false;  // Las bobinas nacen sin certificar
 
-        // AUTO-MINT: balance completo al creador
         t.balance[msg.sender] = totalSupply;
+
+        _allTokenIds.push(tokenId);
         _userTokenIds[msg.sender].push(tokenId);
 
         emit TokenCreated(tokenId, msg.sender, name, totalSupply, parentId);
     }
 
-    /// @notice La fábrica consume materias primas al producir con una estructura (BOM)
-    /// @dev Reduce el balance de la fábrica para el material consumido.
-    ///      Llamar antes de createToken() para cada material en la estructura.
-    /// @param tokenId  Token de materia prima (parentId == 0) a consumir
-    /// @param amount   Cantidad a consumir (totalConsumo = amountPerUnit * unidadesAProducir)
+    /// @notice El Certificador certifica un lote de bobinas
+    /// @param tokenId  ID del token Bobina (parentId debe ser 0)
+    /// @param certHash Hash del documento de certificación (SHA256 del PDF, etc.)
+    function certifyToken(uint256 tokenId, string memory certHash) public onlyApproved {
+        uint256 uid = addressToUserId[msg.sender];
+        if (!_strEq(users[uid].role, "certifier")) revert NotCertifier();
+        if (tokens[tokenId].id == 0)               revert TokenNotFound();
+        if (tokens[tokenId].parentId != 0)         revert TokenNotCertifiable();
+        if (tokens[tokenId].certified)             revert TokenNotCertifiable();
+
+        tokens[tokenId].certified = true;
+        emit TokenCertified(tokenId, msg.sender, certHash, block.timestamp);
+    }
+
+    /// @notice La Fábrica consume bobinas al producir láminas
+    /// @param tokenId ID del token Bobina a consumir
+    /// @param amount  Cantidad a descontar (escalada ×100)
     function consumeRawMaterial(uint256 tokenId, uint256 amount) public onlyApproved {
         if (amount == 0) revert ZeroAmount();
         uint256 uid = addressToUserId[msg.sender];
         if (!_strEq(users[uid].role, "factory")) revert NotFactory();
-        if (tokens[tokenId].id == 0) revert TokenNotFound();
-        if (tokens[tokenId].parentId != 0) revert NotRawMaterial();
+        if (tokens[tokenId].id == 0)             revert TokenNotFound();
+        if (tokens[tokenId].parentId != 0)       revert NotRawMaterial();
         if (tokens[tokenId].balance[msg.sender] < amount) revert InsufficientBalance();
 
         tokens[tokenId].balance[msg.sender] -= amount;
@@ -261,15 +301,15 @@ contract SupplyChain {
         emit MaterialConsumed(msg.sender, tokenId, amount);
     }
 
-    /// @notice El creador puede actualizar nombre y características de su token
+    /// @notice El creador actualiza nombre y características de su token
     function updateToken(
         uint256 tokenId,
         string memory name,
         string memory features
     ) public onlyApproved {
-        if (tokens[tokenId].id == 0)        revert TokenNotFound();
-        if (tokens[tokenId].burned)          revert TokenAlreadyBurned();
-        if (tokens[tokenId].creator != msg.sender) revert NotTokenCreator();
+        if (tokens[tokenId].id == 0)                   revert TokenNotFound();
+        if (tokens[tokenId].burned)                    revert TokenAlreadyBurned();
+        if (tokens[tokenId].creator != msg.sender)     revert NotTokenCreator();
 
         tokens[tokenId].name     = name;
         tokens[tokenId].features = features;
@@ -277,8 +317,7 @@ contract SupplyChain {
         emit TokenUpdated(tokenId, name, features);
     }
 
-    /// @notice Quema el token cuando el Consumer redime el producto
-    /// @dev Solo el Consumer propietario puede hacer burn
+    /// @notice El Cliente quema su token de Lámina al redimir
     function burnToken(uint256 tokenId) public onlyApproved {
         if (tokens[tokenId].id == 0)  revert TokenNotFound();
         if (tokens[tokenId].burned)   revert TokenAlreadyBurned();
@@ -289,13 +328,43 @@ contract SupplyChain {
 
         uint256 bal = tokens[tokenId].balance[msg.sender];
         tokens[tokenId].balance[msg.sender] = 0;
-        tokens[tokenId].burned = true;
+        tokens[tokenId].burned      = true;
         tokens[tokenId].totalSupply -= bal;
 
         emit TokenBurned(tokenId, msg.sender);
     }
 
-    /// @notice Devuelve los campos públicos de un token (sin el mapping de balance)
+    /// @notice El Consumer redime una cantidad parcial de láminas.
+    ///         Reduce el balance del consumer, el totalSupply de la lámina
+    ///         y el totalSupply de la bobina padre en la misma cantidad.
+    /// @param tokenId ID del token producto (lámina, parentId > 0)
+    /// @param amount  Cantidad a redimir
+    function redeemProduct(uint256 tokenId, uint256 amount) public onlyApproved {
+        if (tokens[tokenId].id == 0)                       revert TokenNotFound();
+        if (tokens[tokenId].burned)                        revert TokenAlreadyBurned();
+        if (amount == 0)                                   revert ZeroAmount();
+        if (tokens[tokenId].parentId == 0)                 revert NotProduct();
+
+        uint256 uid = addressToUserId[msg.sender];
+        if (!_strEq(users[uid].role, "consumer"))          revert OnlyConsumerCanBurn();
+        if (tokens[tokenId].balance[msg.sender] < amount)  revert InsufficientBalance();
+
+        tokens[tokenId].balance[msg.sender] -= amount;
+        tokens[tokenId].totalSupply         -= amount;
+
+        if (tokens[tokenId].balance[msg.sender] == 0) {
+            tokens[tokenId].burned = true;
+        }
+
+        uint256 parentId = tokens[tokenId].parentId;
+        if (tokens[parentId].totalSupply >= amount) {
+            tokens[parentId].totalSupply -= amount;
+        }
+
+        emit ProductRedeemed(tokenId, msg.sender, amount, parentId);
+    }
+
+    /// @notice Devuelve los campos públicos de un token
     function getToken(uint256 tokenId) public view returns (
         uint256 id,
         address creator,
@@ -304,11 +373,13 @@ contract SupplyChain {
         string memory features,
         uint256 parentId,
         uint256 dateCreated,
-        bool    burned
+        bool    burned,
+        bool    certified
     ) {
         if (tokens[tokenId].id == 0) revert TokenNotFound();
         Token storage t = tokens[tokenId];
-        return (t.id, t.creator, t.name, t.totalSupply, t.features, t.parentId, t.dateCreated, t.burned);
+        return (t.id, t.creator, t.name, t.totalSupply, t.features,
+                t.parentId, t.dateCreated, t.burned, t.certified);
     }
 
     /// @notice Balance de un token para una address específica
@@ -316,34 +387,31 @@ contract SupplyChain {
         return tokens[tokenId].balance[userAddress];
     }
 
-    /// @notice Retorna todos los tokenIds que alguna vez tuvo o tiene el usuario
-    function getUserTokens(address userAddress) public view returns (uint256[] memory) {
-        return _userTokenIds[userAddress];
-    }
-
     // =========================================================================
     // TRANSFER MANAGEMENT
     // =========================================================================
 
-    /// @notice Inicia una transferencia de tokens entre actores
+    /// @notice Inicia una transferencia de tokens
     /// @dev Flujo válido: producer→factory, factory→retailer, retailer→consumer
-    ///      La transferencia queda en estado Pending hasta que el receptor acepte o rechace.
+    ///      Las bobinas (parentId==0) deben estar certificadas para transferirse.
     function transfer(address to, uint256 tokenId, uint256 amount) public onlyApproved {
-        if (amount == 0) revert ZeroAmount();
+        if (amount == 0)      revert ZeroAmount();
         if (to == msg.sender) revert CannotTransferToSelf();
         if (tokens[tokenId].id == 0) revert TokenNotFound();
         if (tokens[tokenId].burned)  revert TokenAlreadyBurned();
-        if (tokens[tokenId].balance[msg.sender] < amount) revert InsufficientBalance();
 
-        // Validar dirección del flujo según roles
+        // Validar roles primero (permisos antes que recursos)
         uint256 fromUid = addressToUserId[msg.sender];
         uint256 toUid   = addressToUserId[to];
         if (toUid == 0) revert UserNotFound();
         if (users[toUid].status != UserStatus.Approved) revert NotApproved();
-
         _validateTransferDirection(users[fromUid].role, users[toUid].role);
 
-        // Descontar balance del emisor inmediatamente (queda en escrow implícito)
+        // Verificar certificación y balance
+        if (tokens[tokenId].parentId == 0 && !tokens[tokenId].certified)
+            revert TokenNotCertified();
+        if (tokens[tokenId].balance[msg.sender] < amount) revert InsufficientBalance();
+
         tokens[tokenId].balance[msg.sender] -= amount;
 
         uint256 transferId = nextTransferId++;
@@ -363,32 +431,28 @@ contract SupplyChain {
         emit TransferRequested(transferId, msg.sender, to, tokenId, amount);
     }
 
-    /// @notice El receptor acepta la transferencia → recibe los tokens
+    /// @notice El receptor acepta la transferencia
     function acceptTransfer(uint256 transferId) public onlyApproved {
         Transfer storage tr = transfers[transferId];
-        if (tr.id == 0) revert TransferNotFound();
+        if (tr.id == 0)                          revert TransferNotFound();
         if (tr.status != TransferStatus.Pending) revert TransferNotPending();
-        if (tr.to != msg.sender) revert NotTransferRecipient();
+        if (tr.to != msg.sender)                 revert NotTransferRecipient();
 
         tr.status = TransferStatus.Accepted;
-
-        // Acreditar al receptor
         tokens[tr.tokenId].balance[msg.sender] += tr.amount;
         _addTokenIfNew(msg.sender, tr.tokenId);
 
         emit TransferAccepted(transferId);
     }
 
-    /// @notice El receptor rechaza la transferencia → devuelve los tokens al emisor
+    /// @notice El receptor rechaza la transferencia — devuelve tokens al emisor
     function rejectTransfer(uint256 transferId) public onlyApproved {
         Transfer storage tr = transfers[transferId];
-        if (tr.id == 0) revert TransferNotFound();
+        if (tr.id == 0)                          revert TransferNotFound();
         if (tr.status != TransferStatus.Pending) revert TransferNotPending();
-        if (tr.to != msg.sender) revert NotTransferRecipient();
+        if (tr.to != msg.sender)                 revert NotTransferRecipient();
 
         tr.status = TransferStatus.Rejected;
-
-        // Devolver tokens al emisor
         tokens[tr.tokenId].balance[tr.from] += tr.amount;
 
         emit TransferRejected(transferId);
@@ -409,7 +473,32 @@ contract SupplyChain {
         return (tr.id, tr.from, tr.to, tr.tokenId, tr.dateCreated, tr.amount, tr.status);
     }
 
-    /// @notice Retorna todos los transferIds relacionados con un usuario
+    // =========================================================================
+    // INDEX QUERIES  (eficientes — O(1) por call, sin iteración on-chain)
+    // =========================================================================
+
+    /// @notice Todos los tokenIds en orden cronológico de creación
+    function getAllTokenIds() public view returns (uint256[] memory) {
+        return _allTokenIds;
+    }
+
+    /// @notice TokenIds de un usuario específico en orden cronológico
+    function getUserTokenIds(address userAddress) public view returns (uint256[] memory) {
+        return _userTokenIds[userAddress];
+    }
+
+    /// @notice Todos los userIds en orden de registro
+    function getAllUserIds() public view returns (uint256[] memory) {
+        return _allUserIds;
+    }
+
+    /// @notice Addresses de todos los usuarios con un rol específico
+    /// @param role Uno de: "producer", "certifier", "factory", "retailer", "consumer"
+    function getUserAddressesByRole(string memory role) public view returns (address[] memory) {
+        return _userAddressesByRole[role];
+    }
+
+    /// @notice TransferIds relacionados con un usuario
     function getUserTransfers(address userAddress) public view returns (uint256[] memory) {
         return _userTransferIds[userAddress];
     }
@@ -420,27 +509,26 @@ contract SupplyChain {
 
     function _validateRole(string memory role) internal pure {
         if (
-            !_strEq(role, "producer") &&
-            !_strEq(role, "factory")  &&
-            !_strEq(role, "retailer") &&
+            !_strEq(role, "producer")  &&
+            !_strEq(role, "certifier") &&
+            !_strEq(role, "factory")   &&
+            !_strEq(role, "retailer")  &&
             !_strEq(role, "consumer")
         ) revert InvalidRole();
     }
 
-    /// @dev Valida que la dirección de la transferencia sea válida en el flujo
     function _validateTransferDirection(
         string memory fromRole,
         string memory toRole
     ) internal pure {
         bool valid = (
-            (_strEq(fromRole, "producer") && _strEq(toRole, "factory"))  ||
-            (_strEq(fromRole, "factory")  && _strEq(toRole, "retailer")) ||
-            (_strEq(fromRole, "retailer") && _strEq(toRole, "consumer"))
+            (_strEq(fromRole, "producer")  && _strEq(toRole, "factory"))  ||
+            (_strEq(fromRole, "factory")   && _strEq(toRole, "retailer")) ||
+            (_strEq(fromRole, "retailer")  && _strEq(toRole, "consumer"))
         );
         if (!valid) revert InvalidTransferDirection();
     }
 
-    /// @dev Agrega tokenId al índice del usuario solo si no está ya
     function _addTokenIfNew(address user, uint256 tokenId) internal {
         uint256[] storage ids = _userTokenIds[user];
         for (uint256 i = 0; i < ids.length; i++) {
@@ -449,7 +537,6 @@ contract SupplyChain {
         ids.push(tokenId);
     }
 
-    /// @dev Comparación de strings en Solidity via keccak256
     function _strEq(string memory a, string memory b) internal pure returns (bool) {
         return keccak256(bytes(a)) == keccak256(bytes(b));
     }

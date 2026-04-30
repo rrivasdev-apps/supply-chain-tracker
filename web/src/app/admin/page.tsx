@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useWeb3 } from "@/contexts/Web3Context"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { changeStatusUser, getUserInfo, UserInfo, UserStatus } from "@/services/Web3Service"
+import { useAllUsers } from "@/hooks/useAllUsers"
 import { ethers } from "ethers"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,7 +20,7 @@ const STATUS_VARIANT: Record<number, "default" | "secondary" | "destructive" | "
   0: "secondary", 1: "default", 2: "destructive", 3: "outline"
 }
 const ROLE_LABEL: Record<string, string> = {
-  producer: "Productor", factory: "Fábrica", retailer: "Distribuidor", consumer: "Consumidor"
+  producer: "Fundición", certifier: "Certificador", factory: "Fábrica", retailer: "Distribuidor", consumer: "Cliente"
 }
 
 const ANVIL_ACCOUNTS = [
@@ -36,15 +37,17 @@ interface UserEntry extends UserInfo {
 
 export default function AdminPage() {
   const router = useRouter()
-  const { isConnected, isAdmin, contract } = useWeb3()
+  const { isConnected, isAdmin, userLoading, contract } = useWeb3()
   const [lookup, setLookup] = useState("")
   const [users, setUsers] = useState<UserEntry[]>([])
   const [lookupLoading, setLookupLoading] = useState(false)
+  const { pending: pendingUsers, loading: pendingLoading, refetch: refetchPending } = useAllUsers()
 
   useEffect(() => {
+    if (userLoading) return
     if (!isConnected) { router.push("/"); return }
     if (!isAdmin) { router.push("/dashboard"); return }
-  }, [isConnected, isAdmin, router])
+  }, [isConnected, isAdmin, userLoading, router])
 
   const handleLookup = useCallback(async (addressOverride?: string) => {
     const address = addressOverride ?? lookup
@@ -98,6 +101,69 @@ export default function AdminPage() {
             Flujo de prueba: conecta otras cuentas de Anvil → solicitan un rol → búscalas aquí → apruébalas.
           </p>
         </div>
+
+        {(pendingLoading || pendingUsers.length > 0) && (
+          <Card className="border-orange-200 bg-orange-50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base text-orange-800">
+                Solicitudes Pendientes
+                {!pendingLoading && (
+                  <span className="ml-2 text-sm font-normal">({pendingUsers.length})</span>
+                )}
+              </CardTitle>
+              <CardDescription className="text-orange-700">Usuarios que esperan aprobación</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {pendingLoading ? (
+                <div className="h-10 bg-orange-100 animate-pulse rounded" />
+              ) : (
+                pendingUsers.map((user) => (
+                  <div key={user.addr} className="flex items-center justify-between gap-4 flex-wrap bg-white rounded-md px-3 py-2 border border-orange-100">
+                    <div className="space-y-0.5 min-w-0">
+                      <p className="text-sm font-medium truncate">{user.name || "Sin nombre"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {ROLE_LABEL[user.role] ?? user.role} · <span className="font-mono">{user.addr.slice(0, 8)}…{user.addr.slice(-6)}</span>
+                      </p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          if (!contract) return
+                          try {
+                            await changeStatusUser(contract, user.addr, 1)
+                            await refetchPending()
+                            toast.success(`${user.name || user.addr.slice(0, 8)} aprobado`)
+                          } catch (e) {
+                            toast.error(e instanceof Error ? e.message : "Error al aprobar")
+                          }
+                        }}
+                      >
+                        Aprobar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={async () => {
+                          if (!contract) return
+                          try {
+                            await changeStatusUser(contract, user.addr, 2)
+                            await refetchPending()
+                            toast.success(`${user.name || user.addr.slice(0, 8)} rechazado`)
+                          } catch (e) {
+                            toast.error(e instanceof Error ? e.message : "Error al rechazar")
+                          }
+                        }}
+                      >
+                        Rechazar
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="border-blue-200 bg-blue-50">
           <CardHeader className="pb-2">
@@ -167,6 +233,7 @@ export default function AdminPage() {
                         </Badge>
                       </div>
                       <p className="text-sm font-medium">
+                        {user.name && <span className="mr-1">{user.name} —</span>}
                         {ROLE_LABEL[user.role] ?? user.role}
                         <span className="text-muted-foreground font-normal"> · ID #{user.id.toString()}</span>
                       </p>

@@ -12,10 +12,11 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 
 const ROLE_LABELS: Record<string, string> = {
-  producer: "Productor (Fundición)",
-  factory: "Fábrica de puertas",
+  producer: "Fundición",
+  certifier: "Certificador",
+  factory: "Fábrica",
   retailer: "Distribuidor",
-  consumer: "Consumidor",
+  consumer: "Cliente",
 }
 
 const STATUS_LABELS: Record<number, string> = { 0: "Pendiente", 1: "Aprobado", 2: "Rechazado", 3: "Cancelado" }
@@ -25,13 +26,14 @@ const STATUS_VARIANTS: Record<number, "default" | "secondary" | "destructive" | 
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { isConnected, userStatus, account, role, isAdmin, userInfo, disconnectWallet, refreshUser } = useWeb3()
+  const { isConnected, userStatus, userLoading, account, role, isAdmin, userInfo, disconnectWallet, refreshUser } = useWeb3()
   const { tokens } = useTokens()
   const { transfers } = useTransfers()
 
   useEffect(() => {
+    if (userLoading) return
     if (!isConnected) router.push("/")
-  }, [isConnected, router])
+  }, [isConnected, userLoading, router])
 
   const activeTokens = tokens.filter((t) => !t.burned).length
   const burnedTokens = tokens.filter((t) => t.burned).length
@@ -66,6 +68,9 @@ export default function ProfilePage() {
 
               {userInfo && (
                 <>
+                  <span className="text-muted-foreground">Nombre / Razón Social</span>
+                  <span>{userInfo.name || "—"}</span>
+
                   <span className="text-muted-foreground">ID usuario</span>
                   <span>{userInfo.id.toString()}</span>
                 </>

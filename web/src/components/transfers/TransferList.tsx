@@ -1,19 +1,18 @@
 "use client"
 
 import { TransferCard } from "./TransferCard"
-import { Transfer } from "@/services/Web3Service"
+import { Transfer, Token } from "@/services/Web3Service"
 
 interface TransferListProps {
   transfers: Transfer[]
   loading: boolean
-  tokenNames?: Record<string, string>
-  tokenIsRawMap?: Record<string, boolean>
+  tokenMap?: Record<string, Token>
   onAccept?: (id: bigint) => void
   onReject?: (id: bigint) => void
   emptyMessage?: string
 }
 
-export function TransferList({ transfers, loading, tokenNames, tokenIsRawMap, onAccept, onReject, emptyMessage }: TransferListProps) {
+export function TransferList({ transfers, loading, tokenMap, onAccept, onReject, emptyMessage }: TransferListProps) {
   if (loading) {
     return (
       <div className="flex flex-col gap-2">
@@ -38,8 +37,7 @@ export function TransferList({ transfers, loading, tokenNames, tokenIsRawMap, on
         <TransferCard
           key={t.id.toString()}
           transfer={t}
-          tokenName={tokenNames?.[t.tokenId.toString()]}
-          tokenIsRaw={tokenIsRawMap?.[t.tokenId.toString()]}
+          token={tokenMap?.[t.tokenId.toString()]}
           onAccept={onAccept}
           onReject={onReject}
         />

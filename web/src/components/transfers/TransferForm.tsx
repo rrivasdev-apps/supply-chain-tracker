@@ -4,13 +4,26 @@ import { useState } from "react"
 import { useWeb3 } from "@/contexts/Web3Context"
 import { transfer } from "@/services/Web3Service"
 import { TokenWithBalance } from "@/hooks/useTokens"
+import { useApprovedUsers } from "@/hooks/useApprovedUsers"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
-import { ethers } from "ethers"
 import { SCALE_FACTOR, fmtRaw } from "@/contracts/config"
+
+const TARGET_ROLE: Record<string, string> = {
+  producer: "factory",
+  factory: "retailer",
+  retailer: "consumer",
+}
+
+const TARGET_LABEL: Record<string, string> = {
+  factory: "Fábrica",
+  retailer: "Distribuidor",
+  consumer: "Cliente",
+}
 
 interface TransferFormProps {
   token: TokenWithBalance
@@ -19,7 +32,10 @@ interface TransferFormProps {
 }
 
 export function TransferForm({ token, onSuccess, onCancel }: TransferFormProps) {
-  const { contract } = useWeb3()
+  const { contract, role } = useWeb3()
+  const targetRole = TARGET_ROLE[role ?? ""] ?? ""
+  const { users: targets, loading: targetsLoading } = useApprovedUsers(targetRole)
+
   const [to, setTo] = useState("")
   const [amount, setAmount] = useState("")
   const [loading, setLoading] = useState(false)
@@ -30,12 +46,7 @@ export function TransferForm({ token, onSuccess, onCancel }: TransferFormProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!contract) return
-
-    if (!ethers.isAddress(to)) {
-      toast.error("Dirección de destino inválida")
-      return
-    }
+    if (!contract || !to) return
 
     const amtFloat = parseFloat(amount)
     if (isNaN(amtFloat) || amtFloat <= 0) {
@@ -71,15 +82,29 @@ export function TransferForm({ token, onSuccess, onCancel }: TransferFormProps) 
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="to">Dirección Destino</Label>
-            <Input
-              id="to"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              placeholder="0x..."
-              className="font-mono text-sm"
-            />
+            <Label>Destinatario ({TARGET_LABEL[targetRole] ?? targetRole})</Label>
+            {targetsLoading ? (
+              <div className="h-9 bg-muted animate-pulse rounded-md" />
+            ) : targets.length === 0 ? (
+              <p className="text-sm text-muted-foreground border rounded-md px-3 py-2">
+                No hay {TARGET_LABEL[targetRole] ?? targetRole}s aprobados disponibles
+              </p>
+            ) : (
+              <Select value={to} onValueChange={(v) => setTo(v ?? "")}>
+                <SelectTrigger>
+                  <SelectValue placeholder={`Seleccionar ${TARGET_LABEL[targetRole] ?? targetRole}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {targets.map((u) => (
+                    <SelectItem key={u.addr} value={u.addr}>
+                      {u.name} — {u.addr.slice(0, 8)}…{u.addr.slice(-6)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="amount">Cantidad</Label>
             <Input
@@ -93,8 +118,9 @@ export function TransferForm({ token, onSuccess, onCancel }: TransferFormProps) 
               placeholder={isRawMaterial ? "0.5" : "1"}
             />
           </div>
+
           <div className="flex gap-2">
-            <Button type="submit" disabled={loading} className="flex-1">
+            <Button type="submit" disabled={loading || !to || targets.length === 0} className="flex-1">
               {loading ? "Enviando..." : "Enviar Transferencia"}
             </Button>
             {onCancel && (

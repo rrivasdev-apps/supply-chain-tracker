@@ -11,6 +11,7 @@ interface Web3ContextType {
   role: string | null
   isAdmin: boolean
   userStatus: number | null
+  userLoading: boolean
   userInfo: UserInfo | null
   contract: ethers.Contract | null
   provider: ethers.BrowserProvider | null
@@ -25,6 +26,7 @@ const Web3Context = createContext<Web3ContextType>({
   role: null,
   isAdmin: false,
   userStatus: null,
+  userLoading: false,
   userInfo: null,
   contract: null,
   provider: null,
@@ -39,11 +41,17 @@ export function Web3Provider({ children }: { children: ReactNode }) {
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null)
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
   const [adminFlag, setAdminFlag] = useState(false)
+  const [userLoading, setUserLoading] = useState(false)
 
   const loadUser = useCallback(async (addr: string, ctr: ethers.Contract) => {
-    const [info, admin] = await Promise.all([getUserInfo(ctr, addr), checkIsAdmin(ctr, addr)])
-    setUserInfo(info)
-    setAdminFlag(admin)
+    setUserLoading(true)
+    try {
+      const [info, admin] = await Promise.all([getUserInfo(ctr, addr), checkIsAdmin(ctr, addr)])
+      setUserInfo(info)
+      setAdminFlag(admin)
+    } finally {
+      setUserLoading(false)
+    }
   }, [])
 
   const connectWallet = useCallback(async () => {
@@ -84,6 +92,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     setProvider(null)
     setUserInfo(null)
     setAdminFlag(false)
+    setUserLoading(false)
   }, [])
 
   const refreshUser = useCallback(async () => {
@@ -101,8 +110,11 @@ export function Web3Provider({ children }: { children: ReactNode }) {
         disconnectWallet()
         return
       }
-      // Re-create the signer and contract for the new account
       if (provider) {
+        // Clear stale user data immediately so pages don't show old account's info
+        setUserInfo(null)
+        setAdminFlag(false)
+
         provider.getSigner().then((signer) => {
           const newContract = getContract(signer)
           setAccount(accounts[0])
@@ -124,6 +136,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
         role: userInfo?.role ?? null,
         isAdmin: adminFlag,
         userStatus: userInfo ? Number(userInfo.status) : null,
+        userLoading,
         userInfo,
         contract,
         provider,

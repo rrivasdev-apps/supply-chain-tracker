@@ -99,11 +99,17 @@ export function TokenCard({ token, onTransfer, onBurn, onEdit, showActions = tru
 
           {/* Actions */}
           {showActions && !token.burned && (
-            <div className="flex gap-2 shrink-0 ml-auto">
+            <div className="flex gap-2 shrink-0 ml-auto items-center">
               {onTransfer && token.balance > 0n && (
-                <Button size="sm" variant="outline" onClick={() => onTransfer(token)}>
-                  Transferir
-                </Button>
+                isRawMaterial && !token.certified ? (
+                  <span className="text-xs font-medium px-2 py-1 rounded border border-red-400 bg-red-500/20 text-red-700">
+                    Certificación Pendiente
+                  </span>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={() => onTransfer(token)}>
+                    Transferir
+                  </Button>
+                )
               )}
               {onBurn && (
                 <Button size="sm" variant="destructive" onClick={() => onBurn(token)}>

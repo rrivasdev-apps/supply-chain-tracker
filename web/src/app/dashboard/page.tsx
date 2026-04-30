@@ -11,34 +11,36 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
 const ROLE_LABELS: Record<string, string> = {
-  producer: "Productor",
+  producer: "Fundición",
+  certifier: "Certificador",
   factory: "Fábrica",
   retailer: "Distribuidor",
-  consumer: "Consumidor",
+  consumer: "Cliente",
 }
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { isConnected, isAdmin, userStatus, role, account } = useWeb3()
+  const { isConnected, isAdmin, userStatus, userLoading, role, account } = useWeb3()
   const { tokens, loading: tokensLoading } = useTokens()
   const { pending, incoming, outgoing, loading: transfersLoading } = useTransfers()
 
   useEffect(() => {
+    if (userLoading) return
     if (!isConnected) { router.push("/"); return }
     if (isAdmin) { router.push("/admin"); return }
-    if (userStatus !== null && userStatus !== 1) { router.push("/"); return }
-  }, [isConnected, isAdmin, userStatus, router])
+    if (userStatus !== 1) { router.push("/"); return }
+  }, [isConnected, isAdmin, userStatus, userLoading, router])
 
   const rawMaterials = tokens.filter((t) => t.parentId === 0n && !t.burned)
   const products = tokens.filter((t) => t.parentId > 0n && !t.burned)
   const activeTokens = tokens.filter((t) => !t.burned)
 
   const stats = [
-    {
-      label: role === "producer" ? "Productos Activos" : role === "factory" ? "Materias Primas" : "Tokens Activos",
+    ...(role !== "certifier" ? [{
+      label: role === "producer" ? "Bobinas Activas" : role === "factory" ? "Materias Primas" : role === "consumer" ? "Productos Activos" : "Tokens Activos",
       value: role === "factory" ? rawMaterials.length : activeTokens.length,
       loading: tokensLoading,
-    },
+    }] : []),
     ...(role === "factory" ? [{
       label: "Productos Fabricados",
       value: products.length,
@@ -103,13 +105,18 @@ export default function DashboardPage() {
             <CardContent className="space-y-2">
               {role === "producer" && (
                 <Link href="/tokens" className="block p-3 rounded-md bg-muted hover:bg-muted/80 transition-colors text-sm">
-                  Crear Nuevo Producto →
+                  Registrar Nueva Bobina →
+                </Link>
+              )}
+              {role === "certifier" && (
+                <Link href="/certification" className="block p-3 rounded-md bg-muted hover:bg-muted/80 transition-colors text-sm">
+                  Ver Lotes A Certificar →
                 </Link>
               )}
               {role === "factory" && (
                 <>
                   <Link href="/tokens" className="block p-3 rounded-md bg-muted hover:bg-muted/80 transition-colors text-sm">
-                    Fabricar Nuevo Producto →
+                    Fabricar Nueva Lámina →
                   </Link>
                   <Link href="/transfers" className="block p-3 rounded-md bg-muted hover:bg-muted/80 transition-colors text-sm">
                     Aceptar Transferencias →
@@ -130,7 +137,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2 text-sm flex-wrap">
-                {["Productor", "Fábrica", "Distribuidor", "Consumidor"].map((step, i, arr) => (
+                {["Fundición", "Certificador", "Fábrica", "Distribuidor", "Cliente"].map((step, i, arr) => (
                   <div key={step} className="flex items-center gap-2">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
                       ROLE_LABELS[role ?? ""] === step

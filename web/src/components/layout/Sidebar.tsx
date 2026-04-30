@@ -13,9 +13,10 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", roles: ["producer", "factory", "retailer", "consumer"] },
+  { href: "/dashboard", label: "Dashboard", roles: ["producer", "certifier", "factory", "retailer", "consumer"] },
   { href: "/tokens", label: "Productos", roles: ["producer", "factory", "retailer", "consumer"] },
   { href: "/transfers", label: "Transferencias", roles: ["producer", "factory", "retailer", "consumer"] },
+  { href: "/certification", label: "Certificación", roles: ["certifier"] },
   { href: "/profile", label: "Perfil" },
   { href: "/admin", label: "Administración", adminOnly: true },
 ]
