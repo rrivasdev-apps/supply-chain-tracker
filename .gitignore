@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# Foundry — artefactos de compilación y despliegue (no son secretos pero no deben versionarse)
+sc/out/
+sc/broadcast/
+sc/cache/
+
+# Variables de entorno — nunca deben subirse
+.env
+.env.local
+.env*.local

@@ -23,6 +23,10 @@
 11. [Manejo de Errores](#11-manejo-de-errores)
 12. [Invariantes y Restricciones de Negocio](#12-invariantes-y-restricciones-de-negocio)
 
+**Apéndices**
+- [Índices de Eficiencia](#apéndice--índices-de-eficiencia)
+- [Gestión del Entorno de Desarrollo](#apéndice--gestión-del-entorno-de-desarrollo)
+
 ---
 
 ## 1. Visión General
@@ -865,3 +869,53 @@ El contrato mantiene índices auxiliares en mappings privados para evitar iterac
 | `_userTransferIds[address]` | Transferencias relacionadas con un usuario |
 
 Estos índices permiten al frontend obtener todos los datos relevantes con un número mínimo de llamadas al contrato, sin necesidad de escanear rangos de IDs ni iterar en el frontend.
+
+---
+
+## Apéndice — Gestión del Entorno de Desarrollo
+
+### Configuración de variables de entorno
+
+El frontend no tiene ningún valor sensible hardcodeado en el código fuente. Toda la configuración específica del entorno vive en `web/.env.local`, que **nunca se versiona**:
+
+```
+web/.env.local
+├── NEXT_PUBLIC_CONTRACT_ADDRESS   # dirección del contrato desplegado
+└── NEXT_PUBLIC_RPC_URL            # endpoint RPC de la red activa
+```
+
+El archivo `web/.env.example` sí está versionado y sirve como plantilla documentada para nuevos colaboradores.
+
+### Script de redespliegue (`redeploy.sh`)
+
+Cada vez que se reinicia Anvil el contrato se destruye y debe volver a desplegarse. El script `redeploy.sh` en la raíz del proyecto automatiza ese proceso completo en un solo comando:
+
+```
+redeploy.sh  [PRIVATE_KEY]
+     │
+     ├─ 1. Verifica que Anvil responde en el RPC configurado
+     ├─ 2. forge build  →  compila SupplyChain.sol
+     ├─ 3. forge script --broadcast  →  despliega y captura la dirección
+     ├─ 4. jq '{abi:.abi}'  →  exporta el ABI a web/src/contracts/SupplyChain.json
+     └─ 5. sed  →  actualiza NEXT_PUBLIC_CONTRACT_ADDRESS en web/.env.local
+```
+
+**Uso:**
+
+```bash
+# Opción A — pasar la clave como argumento
+./redeploy.sh 0x<PRIVATE_KEY_ANVIL>
+
+# Opción B — definirla como variable de sesión (no queda en historial de comandos)
+export ANVIL_PRIVATE_KEY=0x<PRIVATE_KEY_ANVIL>
+./redeploy.sh
+```
+
+Tras ejecutarlo, reiniciar el servidor Next.js para que lea la nueva dirección:
+
+```bash
+# Ctrl+C en la terminal del servidor, luego:
+cd web && npm run dev
+```
+
+> La clave privada de Anvil (`Account #0`) es pública y la misma en toda instalación. No debe usarse en ninguna red real.

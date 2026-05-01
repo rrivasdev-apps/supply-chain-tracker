@@ -1,8 +1,11 @@
-export const CONTRACT_ADDRESS = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
+const addr = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
+if (!addr) throw new Error("NEXT_PUBLIC_CONTRACT_ADDRESS no está definida en .env.local")
+export const CONTRACT_ADDRESS: string = addr
 
 export const ANVIL_CHAIN_ID = 31337
 
-export const ANVIL_RPC_URL = "http://localhost:8545"
+export const ANVIL_RPC_URL =
+  process.env.NEXT_PUBLIC_RPC_URL ?? "http://localhost:8545"
 
 // Materias primas se almacenan ×100 on-chain para soportar 2 decimales
 // Ej: el usuario crea 100 láminas → on-chain 10000; consume 1.5 → on-chain 150
