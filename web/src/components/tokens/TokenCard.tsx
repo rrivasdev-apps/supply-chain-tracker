@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { TokenWithBalance } from "@/hooks/useTokens"
 import { getRedemptions } from "@/services/Web3Service"
 import { RedemptionHistory } from "@/components/consumer/RedemptionHistory"
@@ -104,28 +105,44 @@ export function TokenCard({ token, onTransfer, onBurn, onEdit, showActions = tru
             </div>
 
             {/* Key stats + features */}
-            <div className="flex gap-6 text-sm shrink-0 flex-wrap">
-              <div>
-                <p className="text-xs text-muted-foreground">Balance</p>
-                <p className="font-semibold">{isRawMaterial ? fmtRaw(token.balance) : token.balance.toString()}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Existencia</p>
-                <p className="font-medium">{isRawMaterial ? fmtRaw(token.totalSupply) : token.totalSupply.toString()}</p>
-              </div>
+            <div className="flex gap-6 text-sm shrink-0 flex-wrap items-end">
+              <Tooltip>
+                <TooltipTrigger render={<div className="cursor-default" />}>
+                  <div className="min-h-[2rem] flex items-end">
+                    <p className="text-xs text-muted-foreground leading-tight">Inventario<br />Empresa</p>
+                  </div>
+                  <p className="font-semibold">{isRawMaterial ? fmtRaw(token.balance) : token.balance.toString()}</p>
+                </TooltipTrigger>
+                <TooltipContent>Inventario existente en la empresa.</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger render={<div className="cursor-default" />}>
+                  <div className="min-h-[2rem] flex items-end">
+                    <p className="text-xs text-muted-foreground leading-tight">Existencia<br />Total</p>
+                  </div>
+                  <p className="font-medium">{isRawMaterial ? fmtRaw(token.totalSupply) : token.totalSupply.toString()}</p>
+                </TooltipTrigger>
+                <TooltipContent>Existencia total del producto en la cadena de producción y comercialización.</TooltipContent>
+              </Tooltip>
               {token.parentId > 0n && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Origen</p>
+                  <div className="min-h-[2rem] flex items-end">
+                    <p className="text-xs text-muted-foreground">Origen</p>
+                  </div>
                   <p className="font-medium">#{token.parentId.toString()}</p>
                 </div>
               )}
               <div>
-                <p className="text-xs text-muted-foreground">Creado</p>
+                <div className="min-h-[2rem] flex items-end">
+                  <p className="text-xs text-muted-foreground">Creado</p>
+                </div>
                 <p className="font-medium">{new Date(Number(token.dateCreated) * 1000).toLocaleDateString()}</p>
               </div>
               {featureEntries.map(([k, v]) => (
                 <div key={k}>
-                  <p className="text-xs text-muted-foreground capitalize">{FEATURE_LABELS[k] ?? k}</p>
+                  <div className="min-h-[2rem] flex items-end">
+                    <p className="text-xs text-muted-foreground capitalize">{FEATURE_LABELS[k] ?? k}</p>
+                  </div>
                   <p className="font-medium">{renderFeatureValue(v)}</p>
                 </div>
               ))}

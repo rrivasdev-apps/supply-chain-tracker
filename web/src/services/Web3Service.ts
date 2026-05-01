@@ -337,3 +337,112 @@ export async function getApprovedUsersByRole(
   const users = await Promise.all(addresses.map((addr) => getUserInfo(contract, addr)))
   return users.filter((u): u is UserInfo => u !== null && u.status === 1)
 }
+
+// ── Fechas de registro y aprobación ──────────────────────────────────────────
+
+export interface UserDates {
+  registeredAt: Date | null
+  approvedAt: Date | null
+}
+
+export async function getUserDates(
+  contract: ethers.Contract,
+  address: string
+): Promise<UserDates> {
+  const [regEvents, statusEvents] = await Promise.all([
+    contract.queryFilter(contract.filters.UserRoleRequested(address)),
+    contract.queryFilter(contract.filters.UserStatusChanged(address)),
+  ])
+
+  let registeredAt: Date | null = null
+  if (regEvents.length > 0) {
+    const block = await regEvents[0].getBlock()
+    registeredAt = new Date(block.timestamp * 1000)
+  }
+
+  let approvedAt: Date | null = null
+  for (const ev of statusEvents as ethers.EventLog[]) {
+    if (Number(ev.args[1]) === 1) {
+      const block = await ev.getBlock()
+      approvedAt = new Date(block.timestamp * 1000)
+      break
+    }
+  }
+
+  return { registeredAt, approvedAt }
+}
+
+// ── KPIs globales o por usuario ───────────────────────────────────────────────
+
+export interface AdminStats {
+  totalRawMaterials: number
+  totalProducts: number
+  totalCertifications: number
+  totalTransfers: number
+  pendingTransfers: number
+  totalRedemptions: number
+  redeemedUnits: bigint
+}
+
+export async function getAdminStats(
+  contract: ethers.Contract,
+  address?: string          // undefined = global, string = filtrado por usuario
+): Promise<AdminStats> {
+  const [certEvents, transferEvents, redeemEvents, allTokens] = await Promise.all([
+    contract.queryFilter(
+      address
+        ? contract.filters.TokenCertified(null, address)
+        : contract.filters.TokenCertified()
+    ),
+    contract.queryFilter(
+      address
+        ? contract.filters.TransferRequested(null, address)
+        : contract.filters.TransferRequested()
+    ),
+    contract.queryFilter(
+      address
+        ? contract.filters.ProductRedeemed(null, address)
+        : contract.filters.ProductRedeemed()
+    ),
+    address ? getUserTokens(contract, address) : getAllTokens(contract),
+  ])
+
+  // Para transfers recibidas también si hay address
+  let allTransferEvents = transferEvents
+  if (address) {
+    const incoming = await contract.queryFilter(
+      contract.filters.TransferRequested(null, null, address)
+    )
+    allTransferEvents = [...new Map(
+      [...transferEvents, ...incoming].map((e) => [e.transactionHash, e])
+    ).values()]
+  }
+
+  const pendingTransfers = await Promise.all(
+    allTransferEvents.map(async (ev) => {
+      try {
+        const log = ev as ethers.EventLog
+        const t = await contract.getTransfer(log.args[0])
+        return Number(t[5]) === 0 ? 1 : 0
+      } catch { return 0 }
+    })
+  )
+
+  const rawMaterials = allTokens.filter((t) => t.parentId === 0n && !t.burned)
+  const products     = allTokens.filter((t) => t.parentId  > 0n && !t.burned)
+
+  const redeemedUnits = (redeemEvents as ethers.EventLog[]).reduce(
+    (sum, ev) => sum + BigInt(ev.args[2]),
+    0n
+  )
+
+  return {
+    totalRawMaterials:  rawMaterials.length,
+    totalProducts:      products.length,
+    totalCertifications: certEvents.length,
+    totalTransfers:      allTransferEvents.length,
+    pendingTransfers:    pendingTransfers.reduce((a: number, b: number) => a + b, 0),
+    totalRedemptions:    redeemEvents.length,
+    redeemedUnits,
+  }
+}

@@ -4,6 +4,7 @@ import "./globals.css";
 import { Web3Provider } from "@/contexts/Web3Context";
 import { Navbar } from "@/components/layout/Navbar";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,11 +33,13 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <Web3Provider>
-          <Navbar />
-          <div className="flex flex-1">
-            {children}
-          </div>
-          <Toaster />
+          <TooltipProvider delay={500}>
+            <Navbar />
+            <div className="flex flex-1">
+              {children}
+            </div>
+            <Toaster />
+          </TooltipProvider>
         </Web3Provider>
       </body>
     </html>
