@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <!-- Calor principal (izquierda) -->
+    <radialGradient id="g-heat-main" cx="22%" cy="52%" r="44%">
+      <stop offset="0%"   stop-color="#FF6500" stop-opacity="0.85"/>
+      <stop offset="45%"  stop-color="#FF4500" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#FF4500" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Calor secundario (derecha) -->
+    <radialGradient id="g-heat-secondary" cx="78%" cy="38%" r="38%">
+      <stop offset="0%"   stop-color="#FF9500" stop-opacity="0.38"/>
+      <stop offset="100%" stop-color="#FF9500" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Chorro de metal fundido -->
+    <linearGradient id="g-stream" x1="18%" y1="28%" x2="80%" y2="86%">
+      <stop offset="0%"   stop-color="#FF8C00"/>
+      <stop offset="30%"  stop-color="#FFB700"/>
+      <stop offset="70%"  stop-color="#FF6500"/>
+      <stop offset="100%" stop-color="#CC3300" stop-opacity="0.4"/>
+    </linearGradient>
+    <linearGradient id="g-stream-core" x1="18%" y1="28%" x2="80%" y2="86%">
+      <stop offset="0%"   stop-color="#FFEE00"/>
+      <stop offset="50%"  stop-color="#FFD700"/>
+      <stop offset="100%" stop-color="#FFA500" stop-opacity="0.3"/>
+    </linearGradient>
+    <!-- Filtros de brillo -->
+    <filter id="f-glow"      x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5"  result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="f-soft-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="14" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="f-bloom"     x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="28" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <!-- Grilla industrial fina -->
+    <pattern id="p-grid" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M 64 0 L 0 0 0 64" fill="none" stroke="#FFFFFF" stroke-width="0.35"/>
+    </pattern>
+    <!-- Viñeta final -->
+    <radialGradient id="g-vignette" cx="50%" cy="50%" r="70%">
+      <stop offset="0%"   stop-color="#030308" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#030308" stop-opacity="0.6"/>
+    </radialGradient>
+  </defs>
+
+  <!-- ── FONDO BASE ───────────────────────────────────────────────────────── -->
+  <rect width="1920" height="1080" fill="#030308"/>
+  <rect width="1920" height="1080" fill="url(#g-heat-main)"/>
+  <rect width="1920" height="1080" fill="url(#g-heat-secondary)"/>
+
+  <!-- ── CONVERTIDOR / HORNO (izquierda) ─────────────────────────────────── -->
+  <!-- Cuerpo principal del convertidor (cilindro inclinado) -->
+  <ellipse cx="310" cy="618" rx="162" ry="275" fill="#0C0C18" opacity="0.95" transform="rotate(-14,310,618)"/>
+  <ellipse cx="300" cy="608" rx="150" ry="262" fill="#111122" opacity="0.9"  transform="rotate(-14,300,608)"/>
+  <ellipse cx="298" cy="605" rx="148" ry="260" fill="none" stroke="#FF6500" stroke-width="1.8" opacity="0.45" transform="rotate(-14,298,605)"/>
+  <!-- Aros de soporte (trunnion rings) -->
+  <rect x="158" y="518" width="292" height="26" rx="13" fill="#0a0a18" stroke="#2A2A44" stroke-width="1.8" opacity="0.85" transform="rotate(-14,304,531)"/>
+  <rect x="162" y="676" width="285" height="20" rx="10" fill="#0a0a18" stroke="#2A2A44" stroke-width="1.8" opacity="0.85" transform="rotate(-14,305,686)"/>
+  <!-- Brillo interior / boca del convertidor -->
+  <ellipse cx="248" cy="368" rx="88"  ry="52"  fill="#FF5500" opacity="0.45" filter="url(#f-bloom)"     transform="rotate(-14,248,368)"/>
+  <ellipse cx="248" cy="368" rx="58"  ry="33"  fill="#FFB700" opacity="0.55" filter="url(#f-soft-glow)" transform="rotate(-14,248,368)"/>
+  <!-- Reborde de la boca -->
+  <ellipse cx="248" cy="368" rx="88"  ry="40"  fill="none"    stroke="#FF8C00" stroke-width="2.5" opacity="0.65" transform="rotate(-14,248,368)"/>
+  <!-- Estructura de soporte -->
+  <rect x="268" y="848" width="18"  height="175" fill="#0a0a18" stroke="#1E1E30" stroke-width="1" opacity="0.8"/>
+  <rect x="238" y="1005" width="76" height="24"  rx="4"        fill="#0d0d20"   stroke="#2A2A44" stroke-width="1" opacity="0.8"/>
+  <rect x="100" y="498"  width="13" height="505" fill="#0d0d20" opacity="0.7"/>
+  <rect x="428" y="498"  width="13" height="455" fill="#0d0d20" opacity="0.7"/>
+  <rect x="100" y="548"  width="175" height="11" fill="#0d0d20" opacity="0.7"/>
+
+  <!-- ── CHORROS DE METAL FUNDIDO ──────────────────────────────────────────── -->
+  <!-- Halo exterior -->
+  <path d="M 234 402 C 322 482, 502 554, 642 684 C 762 794, 882 884, 1052 954"
+        stroke="#FF4500" stroke-width="46" fill="none" opacity="0.22" stroke-linecap="round" filter="url(#f-soft-glow)"/>
+  <!-- Chorro principal -->
+  <path d="M 236 402 C 324 482, 504 554, 644 684 C 764 794, 884 884, 1054 954"
+        stroke="url(#g-stream)" stroke-width="22" fill="none" opacity="0.82" stroke-linecap="round"/>
+  <!-- Chorro secundario -->
+  <path d="M 240 399 C 328 476, 508 548, 648 678 C 768 788, 888 878, 1058 948"
+        stroke="url(#g-stream)" stroke-width="12" fill="none" opacity="0.55" stroke-linecap="round"/>
+  <!-- Núcleo (más brillante) -->
+  <path d="M 238 400 C 326 480, 506 552, 646 682 C 766 792, 886 882, 1056 952"
+        stroke="url(#g-stream-core)" stroke-width="5"  fill="none" opacity="0.92" stroke-linecap="round"/>
+  <!-- Destello de borde -->
+  <path d="M 237 399 C 325 479, 505 551, 645 681 C 765 791, 885 881, 1055 951"
+        stroke="#FFEE88" stroke-width="1.5" fill="none" opacity="0.45" stroke-linecap="round"/>
+  <!-- Charco de metal en el suelo -->
+  <ellipse cx="1098" cy="958" rx="128" ry="34" fill="#FF6500" opacity="0.55" filter="url(#f-soft-glow)"/>
+  <ellipse cx="1098" cy="958" rx="78"  ry="21" fill="#FFB700" opacity="0.65" filter="url(#f-glow)"/>
+  <ellipse cx="1098" cy="958" rx="38"  ry="11" fill="#FFEE00" opacity="0.80"/>
+
+  <!-- ── CHISPAS ─────────────────────────────────────────────────────────── -->
+  <!-- Grupo 1: alrededor de la boca del convertidor -->
+  <circle cx="278" cy="348" r="5"   fill="#FFEE00" filter="url(#f-glow)"/>
+  <circle cx="312" cy="318" r="3.5" fill="#FFFFFF"  filter="url(#f-glow)"/>
+  <circle cx="198" cy="338" r="4"   fill="#FFB700"  filter="url(#f-glow)"/>
+  <circle cx="342" cy="358" r="3"   fill="#FF8C00"  filter="url(#f-glow)"/>
+  <circle cx="178" cy="298" r="2.5" fill="#FFEE00"  filter="url(#f-glow)"/>
+  <circle cx="360" cy="295" r="2"   fill="#FFD700"  filter="url(#f-glow)"/>
+  <circle cx="220" cy="280" r="2.5" fill="#FFCC00"  filter="url(#f-glow)"/>
+  <!-- Trazas de chispas -->
+  <line x1="278" y1="348" x2="238" y2="288" stroke="#FFEE00" stroke-width="1.5" opacity="0.65"/>
+  <line x1="312" y1="318" x2="362" y2="258" stroke="#FFCC00" stroke-width="1.2" opacity="0.55"/>
+  <line x1="198" y1="338" x2="148" y2="275" stroke="#FFB700" stroke-width="1"   opacity="0.50"/>
+  <line x1="342" y1="358" x2="392" y2="308" stroke="#FF9500" stroke-width="1"   opacity="0.45"/>
+  <line x1="178" y1="298" x2="128" y2="228" stroke="#FFDD00" stroke-width="1"   opacity="0.40"/>
+  <line x1="360" y1="295" x2="420" y2="240" stroke="#FFD700" stroke-width="1"   opacity="0.40"/>
+  <!-- Grupo 2: a lo largo del chorro -->
+  <circle cx="428" cy="488" r="4"   fill="#FFB700" filter="url(#f-glow)"/>
+  <circle cx="388" cy="458" r="2.5" fill="#FFEE00" filter="url(#f-glow)"/>
+  <circle cx="548" cy="568" r="3.5" fill="#FF9500" filter="url(#f-glow)"/>
+  <circle cx="498" cy="538" r="2"   fill="#FFDD00" filter="url(#f-glow)"/>
+  <circle cx="698" cy="678" r="3"   fill="#FF8C00" filter="url(#f-glow)"/>
+  <circle cx="818" cy="758" r="2.5" fill="#FFB700" filter="url(#f-glow)"/>
+  <circle cx="920" cy="820" r="2"   fill="#FF9500" filter="url(#f-glow)"/>
+  <line x1="428" y1="488" x2="468" y2="438" stroke="#FFB700" stroke-width="1"   opacity="0.48"/>
+  <line x1="548" y1="568" x2="590" y2="508" stroke="#FF9500" stroke-width="1"   opacity="0.42"/>
+  <line x1="698" y1="678" x2="735" y2="618" stroke="#FF8C00" stroke-width="1"   opacity="0.38"/>
+  <!-- Grupo 3: chispas dispersas en segundo plano -->
+  <circle cx="602"  cy="248" r="2"   fill="#FF9500" opacity="0.65"/>
+  <circle cx="752"  cy="198" r="1.5" fill="#FFCC00" opacity="0.55"/>
+  <circle cx="952"  cy="298" r="2"   fill="#FF8C00" opacity="0.50"/>
+  <circle cx="1102" cy="218" r="1.5" fill="#FFB700" opacity="0.45"/>
+  <circle cx="1302" cy="348" r="2"   fill="#FF9500" opacity="0.40"/>
+  <circle cx="148"  cy="198" r="2"   fill="#FFB700" opacity="0.48"/>
+  <circle cx="82"   cy="348" r="1.5" fill="#FF9500" opacity="0.38"/>
+  <circle cx="502"  cy="178" r="1.5" fill="#FFDD00" opacity="0.42"/>
+  <circle cx="1502" cy="278" r="1.5" fill="#FF9500" opacity="0.28"/>
+  <circle cx="1652" cy="448" r="2"   fill="#FFB700" opacity="0.30"/>
+  <circle cx="850"  cy="120" r="1.5" fill="#FFCC00" opacity="0.35"/>
+  <circle cx="1200" cy="160" r="2"   fill="#FF8C00" opacity="0.32"/>
+
+  <!-- ── RECIPIENTE INDUSTRIAL SECUNDARIO (derecha) ────────────────────── -->
+  <path d="M 1502 98 L 1702 98 L 1762 702 L 1442 702 Z" fill="#0A0A16" stroke="#1E2035" stroke-width="2" opacity="0.88"/>
+  <!-- Juntas verticales -->
+  <line x1="1542" y1="103" x2="1458" y2="697" stroke="#16162A" stroke-width="2.5" opacity="0.8"/>
+  <line x1="1602" y1="100" x2="1602" y2="700" stroke="#16162A" stroke-width="2.5" opacity="0.8"/>
+  <line x1="1662" y1="103" x2="1746" y2="697" stroke="#16162A" stroke-width="2.5" opacity="0.8"/>
+  <!-- Bandas horizontales de refuerzo -->
+  <line x1="1448" y1="282" x2="1756" y2="282" stroke="#1E2035" stroke-width="4"  opacity="0.8"/>
+  <line x1="1450" y1="462" x2="1754" y2="462" stroke="#1E2035" stroke-width="4"  opacity="0.8"/>
+  <!-- Brillo interior del recipiente -->
+  <ellipse cx="1602" cy="148" rx="78" ry="48" fill="#FF6500" opacity="0.10" filter="url(#f-bloom)"/>
+  <!-- Brida de apoyo -->
+  <rect x="1432" y="682" width="338" height="34" rx="4" fill="#090916" stroke="#1E2035" stroke-width="1.8" opacity="0.92"/>
+  <rect x="1442" y="716" width="58" height="198" fill="#090916" stroke="#1E2035" stroke-width="1.5" opacity="0.82"/>
+  <rect x="1702" y="716" width="58" height="198" fill="#090916" stroke="#1E2035" stroke-width="1.5" opacity="0.82"/>
+  <!-- Tuberías (esquina superior derecha) -->
+  <line x1="1762" y1="178" x2="1920" y2="178" stroke="#1A1A30" stroke-width="17" stroke-linecap="round" opacity="0.90"/>
+  <line x1="1920" y1="178" x2="1920" y2="0"   stroke="#1A1A30" stroke-width="17" stroke-linecap="round" opacity="0.90"/>
+  <line x1="1852" y1="178" x2="1852" y2="0"   stroke="#1A1A30" stroke-width="11" stroke-linecap="round" opacity="0.70"/>
+  <circle cx="1762" cy="178" r="11"  fill="#1A1A30" opacity="0.92"/>
+  <line x1="1762" y1="318" x2="1920" y2="318" stroke="#1A1A30" stroke-width="13" stroke-linecap="round" opacity="0.80"/>
+  <line x1="1902" y1="318" x2="1902" y2="178" stroke="#1A1A30" stroke-width="9"  stroke-linecap="round" opacity="0.70"/>
+  <!-- Viga estructural -->
+  <rect x="1382" y="0"  width="20"  height="498" fill="#0A0A18" opacity="0.70"/>
+  <rect x="1382" y="0"  width="118" height="20"  fill="#0A0A18" opacity="0.70"/>
+
+  <!-- ── SUELO INDUSTRIAL ──────────────────────────────────────────────────── -->
+  <rect x="0" y="1022" width="1920" height="58" fill="#06060F" opacity="0.92"/>
+  <line x1="0" y1="1024" x2="1920" y2="1024"    stroke="#1A1A30" stroke-width="2" opacity="0.55"/>
+  <line x1="200"  y1="1024" x2="200"  y2="1080" stroke="#1A1A30" stroke-width="1" opacity="0.35"/>
+  <line x1="400"  y1="1024" x2="400"  y2="1080" stroke="#1A1A30" stroke-width="1" opacity="0.35"/>
+  <line x1="600"  y1="1024" x2="600"  y2="1080" stroke="#1A1A30" stroke-width="1" opacity="0.35"/>
+  <line x1="800"  y1="1024" x2="800"  y2="1080" stroke="#1A1A30" stroke-width="1" opacity="0.35"/>
+  <line x1="1000" y1="1024" x2="1000" y2="1080" stroke="#1A1A30" stroke-width="1" opacity="0.35"/>
+  <line x1="1200" y1="1024" x2="1200" y2="1080" stroke="#1A1A30" stroke-width="1" opacity="0.35"/>
+  <line x1="1400" y1="1024" x2="1400" y2="1080" stroke="#1A1A30" stroke-width="1" opacity="0.35"/>
+  <line x1="1600" y1="1024" x2="1600" y2="1080" stroke="#1A1A30" stroke-width="1" opacity="0.35"/>
+  <line x1="1800" y1="1024" x2="1800" y2="1080" stroke="#1A1A30" stroke-width="1" opacity="0.35"/>
+
+  <!-- ── GRILLA FINA + VIÑETA ──────────────────────────────────────────────── -->
+  <rect width="1920" height="1080" fill="url(#p-grid)"      opacity="0.055"/>
+  <rect width="1920" height="1080" fill="url(#g-vignette)"/>
+</svg>

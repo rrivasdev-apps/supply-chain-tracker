@@ -31,7 +31,11 @@ export function Navbar() {
     useWeb3()
 
   return (
-    <header className="border-b bg-background sticky top-0 z-50">
+    <header className={`sticky top-0 z-50 transition-colors duration-300 ${
+      isConnected
+        ? "border-b bg-background"
+        : "border-b border-white/5 bg-background/10 backdrop-blur-sm"
+    }`}>
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="font-bold text-lg tracking-tight">
           ⛓ Metal Trace

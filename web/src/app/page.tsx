@@ -72,7 +72,14 @@ export default function HomePage() {
   if (!isConnected) {
     return (
       <main className="flex-1 flex items-center justify-center p-8">
-        <div className="max-w-lg w-full text-center space-y-8">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/steel-bg.svg"
+          alt=""
+          aria-hidden="true"
+          className="fixed inset-0 w-full h-full object-cover opacity-20 pointer-events-none select-none z-0"
+        />
+        <div className="relative z-10 max-w-lg w-full text-center space-y-8">
           <div className="space-y-3">
             <h1 className="text-4xl font-bold tracking-tight">Metal Trace</h1>
             <p className="text-muted-foreground text-lg">
