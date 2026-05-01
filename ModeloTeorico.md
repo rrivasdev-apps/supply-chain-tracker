@@ -11,6 +11,7 @@
 
 1. [Visión General](#1-visión-general)
 2. [Arquitectura del Sistema](#2-arquitectura-del-sistema)
+   - [Estructura de Archivos del Proyecto](#estructura-de-archivos-del-proyecto)
 3. [Roles y Permisos](#3-roles-y-permisos)
 4. [Estructuras de Datos](#4-estructuras-de-datos)
 5. [Ciclo de Vida del Usuario](#5-ciclo-de-vida-del-usuario)
@@ -75,6 +76,88 @@ graph TB
 | Librería Web3 | ethers.js v6 | Comunicación frontend ↔ contrato |
 | Frontend | Next.js 16 + React | Interfaz por rol, lectura de eventos |
 | Wallet | MetaMask | Identidad de usuario, firma de transacciones |
+
+### Estructura de Archivos del Proyecto
+
+El repositorio se organiza en dos módulos con responsabilidades completamente separadas. El único punto de sincronización entre ambos es el archivo ABI exportado desde la compilación con Foundry.
+
+```
+Supply-chain-tracker/
+├── sc/                              # Foundry — Smart Contracts
+│   ├── src/
+│   │   └── SupplyChain.sol          # Contrato principal
+│   ├── script/
+│   │   └── Deploy.s.sol             # Script de despliegue en Anvil
+│   ├── test/
+│   │   └── SupplyChain.t.sol        # Tests de integración
+│   ├── out/                         # Artefactos compilados (no versionados)
+│   └── foundry.toml                 # Configuración Foundry
+│
+└── web/                             # Next.js 16 — Frontend
+    └── src/
+        ├── app/                     # Rutas App Router
+        │   ├── page.tsx             # Pantalla de conexión / login
+        │   ├── dashboard/           # Dashboard adaptado por rol
+        │   ├── tokens/              # Inventario de tokens
+        │   ├── transfers/           # Gestión de transferencias
+        │   ├── certification/       # Certificación de bobinas
+        │   ├── admin/               # Panel de administración de usuarios
+        │   └── profile/             # Perfil y KPIs de actividad
+        │
+        ├── components/              # Componentes React por dominio
+        │   ├── ui/                  # Primitivos shadcn/ui
+        │   ├── layout/              # Sidebar · Navbar
+        │   ├── tokens/              # TokenCard · TokenList · CreateTokenForm
+        │   ├── transfers/           # TransferCard · TransferList · TransferForm
+        │   ├── factory/             # CreateLaminaForm
+        │   └── consumer/            # RedeemForm · RedemptionHistory
+        │
+        ├── contexts/
+        │   └── Web3Context.tsx      # Estado global: wallet, usuario, contrato
+        │
+        ├── hooks/                   # React hooks — lectura de datos on-chain
+        │   ├── useTokens.ts         # Tokens del usuario conectado
+        │   ├── useAllTokens.ts      # Todos los tokens (fábrica / transferencias)
+        │   ├── useTransfers.ts      # Transferencias del usuario
+        │   ├── useAllUsers.ts       # Todos los usuarios registrados
+        │   ├── useApprovedUsers.ts  # Usuarios aprobados por rol
+        │   └── useAdminStats.ts     # KPIs globales o filtrados por usuario
+        │
+        ├── services/
+        │   └── Web3Service.ts       # Funciones ethers.js v6 → contrato
+        │
+        └── contracts/
+            ├── SupplyChain.json     # ABI exportado desde Foundry ⬅ puente sc/web
+            └── config.ts            # CONTRACT_ADDRESS de la red activa
+```
+
+El flujo de sincronización entre ambos módulos ocurre una sola vez por despliegue:
+
+```mermaid
+graph LR
+    subgraph SC["sc/  —  Foundry"]
+        SOL["SupplyChain.sol"]
+        FBUILD["forge build"]
+        OUT["out/SupplyChain.json\nartefacto compilado"]
+    end
+
+    subgraph WEB["web/  —  Next.js"]
+        CONTR["contracts/\nSupplyChain.json · config.ts"]
+        CTX["contexts/\nWeb3Context.tsx"]
+        SVC["services/\nWeb3Service.ts"]
+        HK["hooks/\nuseTokens · useTransfers\nuseAllUsers · useAdminStats"]
+        COMP["components/\nui · layout · tokens\ntransfers · factory · consumer"]
+        PAGES["app/\ndashboard · tokens · transfers\ncertification · admin · profile"]
+    end
+
+    SOL --> FBUILD --> OUT
+    OUT -->|"jq '{abi:.abi}'\n+ actualizar config.ts"| CONTR
+    CONTR --> CTX
+    CTX --> SVC
+    SVC --> HK
+    HK --> COMP
+    COMP --> PAGES
+```
 
 ---
 
@@ -733,9 +816,9 @@ El contrato utiliza errores personalizados (`custom errors`) de Solidity, más e
 
 ---
 
-## 12. Invariantes y Restricciones de Negocio
+## 12. Condiciones y Restricciones de Negocio
 
-Las siguientes invariantes deben mantenerse en todo momento en el sistema. Son garantizadas por el propio contrato a través de sus validaciones.
+Las siguientes condiciones deben mantenerse en todo momento en el sistema. Son garantizadas por el propio contrato a través de sus validaciones.
 
 ### I1 — Unicidad de registro
 Una dirección solo puede tener un único registro de usuario. Intentar un segundo `requestUserRole` revierte con `AlreadyRegistered`.
