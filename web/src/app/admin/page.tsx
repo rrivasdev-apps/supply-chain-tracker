@@ -151,7 +151,7 @@ export default function AdminPage() {
   return (
     <div className="flex flex-1">
       <Sidebar />
-      <main className="flex-1 p-6 space-y-6">
+      <main className="flex-1 py-6 pr-6 pl-10 space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Panel De Administración</h1>
           <p className="text-sm text-muted-foreground mt-1">

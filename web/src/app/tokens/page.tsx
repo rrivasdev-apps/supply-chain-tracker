@@ -57,7 +57,7 @@ export default function TokensPage() {
     return (
       <div className="flex flex-1">
         <Sidebar />
-        <main className="flex-1 p-6 space-y-6">
+        <main className="flex-1 py-6 pr-6 pl-10 space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Mis Bobinas</h1>
             {!showCreateForm && (
@@ -132,7 +132,7 @@ export default function TokensPage() {
     return (
       <div className="flex flex-1">
         <Sidebar />
-        <main className="flex-1 p-6 space-y-6">
+        <main className="flex-1 py-6 pr-6 pl-10 space-y-6">
           <h1 className="text-2xl font-bold">Inventario De Fábrica</h1>
 
           <Tabs defaultValue="bobinas">
@@ -193,7 +193,7 @@ export default function TokensPage() {
     return (
       <div className="flex flex-1">
         <Sidebar />
-        <main className="flex-1 p-6 space-y-6">
+        <main className="flex-1 py-6 pr-6 pl-10 space-y-6">
           <h1 className="text-2xl font-bold">Inventario</h1>
           <TokenList
             tokens={tokens.filter((t) => !t.burned)}
@@ -223,7 +223,7 @@ export default function TokensPage() {
     return (
       <div className="flex flex-1">
         <Sidebar />
-        <main className="flex-1 p-6 space-y-6">
+        <main className="flex-1 py-6 pr-6 pl-10 space-y-6">
           <h1 className="text-2xl font-bold">Mis Láminas</h1>
           <TokenList
             tokens={tokens.filter((t) => !t.burned)}

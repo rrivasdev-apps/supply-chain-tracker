@@ -54,7 +54,7 @@ export default function TransfersPage() {
   return (
     <div className="flex flex-1">
       <Sidebar />
-      <main className="flex-1 p-6 space-y-6">
+      <main className="flex-1 py-6 pr-6 pl-10 space-y-6">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">Transferencias</h1>
           {pending.length > 0 && (

@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 
 const ROLE_LABELS: Record<string, string> = {
-  producer: "Productor",
+  producer: "Fundición",
+  certifier: "Certificador",
   factory: "Fábrica",
   retailer: "Distribuidor",
-  consumer: "Consumidor",
+  consumer: "Cliente",
 }
 
 const STATUS_LABELS: Record<number, string> = {
@@ -38,34 +39,10 @@ export function Navbar() {
     }`}>
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="font-bold text-lg tracking-tight">
-          ⛓ Metal Trace
+          ⛓
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6 text-sm">
-          {isConnected && isAdmin && (
-            <>
-              <Link href="/admin" className="text-muted-foreground hover:text-foreground transition-colors">
-                Admin
-              </Link>
-              <Link href="/profile" className="text-muted-foreground hover:text-foreground transition-colors">
-                Perfil
-              </Link>
-            </>
-          )}
-          {isConnected && !isAdmin && userStatus === 1 && (
-            <>
-              <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
-                Dashboard
-              </Link>
-              <Link href="/tokens" className="text-muted-foreground hover:text-foreground transition-colors">
-                Productos
-              </Link>
-              <Link href="/transfers" className="text-muted-foreground hover:text-foreground transition-colors">
-                Transferencias
-              </Link>
-            </>
-          )}
-        </nav>
+        <nav />
 
         <div className="flex items-center gap-3">
           {isConnected && (

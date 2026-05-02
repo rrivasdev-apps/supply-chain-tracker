@@ -1,93 +1,206 @@
-# Supply Chain Tracker
+# Metal Trace
 
+**Trazabilidad blockchain para cadena de suministro industrial**
 
+Sistema descentralizado que registra cada etapa del procesamiento del acero —desde la producción de bobinas en una fundición hasta la entrega y consumo por el cliente final— sobre una blockchain EVM, garantizando inmutabilidad, trazabilidad parental y certificación obligatoria en cada eslabón.
 
-## Getting started
+[![Tests](https://img.shields.io/badge/tests-56%20passed-brightgreen)](#tests)
+[![Solidity](https://img.shields.io/badge/Solidity-0.8.19-blue)](sc/src/SupplyChain.sol)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+---
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+## Demo
 
-## Add your files
+<!-- Sustituir con el link real una vez grabado -->
+> **Video demo:** _pendiente de grabación_ — ver [GuionDemo.md](GuionDemo.md) para el guión completo
 
-* [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+---
+
+## Screenshots
+
+<!-- Añadir imágenes en la carpeta screenshots/ -->
+| Pantalla | Vista |
+|---|---|
+| Login / Conexión | `screenshots/01-login.png` |
+| Dashboard Fundición | `screenshots/02-dashboard-producer.png` |
+| Certificación de lotes | `screenshots/03-certification.png` |
+| Fabricación de producto | `screenshots/04-factory.png` |
+| Panel Admin (KPIs) | `screenshots/05-admin-kpis.png` |
+
+---
+
+## Cadena de valor
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.codecrypto.academy/rrivas.tservicios/supply-chain-tracker.git
-git branch -M main
-git push -uf origin main
+Fundición → Certificador → Fábrica → Distribuidor → Cliente
 ```
 
-## Integrate with your tools
+Cada actor opera con su propia wallet MetaMask. El contrato valida roles, permisos y la dirección correcta del flujo — no es posible saltarse un eslabón ni transferir en sentido inverso.
 
-* [Set up project integrations](https://gitlab.codecrypto.academy/rrivas.tservicios/supply-chain-tracker/-/settings/integrations)
+---
 
-## Collaborate with your team
+## Stack tecnológico
 
-* [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+| Capa | Tecnología |
+|---|---|
+| Smart contract | Solidity ^0.8.19 |
+| Testing y deploy | Foundry (forge, anvil, cast) |
+| Frontend | Next.js 16 + TypeScript + Tailwind CSS + shadcn/ui |
+| Integración Web3 | ethers.js v6 + MetaMask |
+| Red local | Anvil (chainId 31337) |
+| Herramientas IA | Claude Code + MCP Foundry Server |
 
-## Test and Deploy
+---
 
-Use the built-in continuous integration in GitLab.
+## Estructura del proyecto
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+```
+Supply-chain-tracker/
+├── sc/                        # Smart contracts (Foundry)
+│   ├── src/SupplyChain.sol    # Contrato principal
+│   ├── script/Deploy.s.sol   # Script de despliegue
+│   └── test/SupplyChain.t.sol # 56 tests unitarios
+├── web/                       # Frontend Next.js 16
+│   └── src/
+│       ├── app/               # Rutas: dashboard, tokens, transfers, admin…
+│       ├── components/        # UI por dominio (tokens, transfers, factory…)
+│       ├── contexts/          # Web3Context — wallet, rol, contrato
+│       ├── hooks/             # Lectura de datos on-chain
+│       └── services/          # Web3Service — ethers.js v6
+├── mcp-foundry/               # MCP Server — Foundry CLI para Claude
+├── docs/
+│   ├── diagramas.md           # Diagramas Mermaid de arquitectura
+│   └── manual-usuario.md     # Manual de uso por rol
+├── screenshots/               # Capturas de pantalla de la DApp
+├── ModeloTeorico.md           # Arquitectura técnica completa
+├── GuionDemo.md               # Guión del video de demostración
+├── IA.md                      # Retrospectiva de uso de IA
+├── redeploy.sh                # Script de redespliegue en Anvil
+└── LICENSE
+```
 
-***
+---
 
-# Editing this README
+## Instalación y puesta en marcha
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+### Requisitos
 
-## Suggestions for a good README
+- [Node.js](https://nodejs.org/) >= 18
+- [Foundry](https://book.getfoundry.sh/getting-started/installation) (`forge`, `anvil`, `cast`)
+- [MetaMask](https://metamask.io/) en el navegador
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+### 1. Clonar el repositorio
 
-## Name
-Choose a self-explaining name for your project.
+```bash
+git clone <URL_DEL_REPO>
+cd Supply-chain-tracker
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+### 2. Smart contract
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+```bash
+cd sc
+forge install          # instalar dependencias
+forge build            # compilar
+forge test             # ejecutar los 56 tests
+```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+### 3. Levantar la blockchain local
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+```bash
+# En una terminal separada
+anvil
+```
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+### 4. Desplegar el contrato
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+```bash
+# Desde la raíz del proyecto
+# La primera clave privada de Anvil (Account #0) es el admin
+./redeploy.sh 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+```
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+El script compila, despliega, exporta el ABI y actualiza `web/.env.local` automáticamente.
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+### 5. Frontend
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+```bash
+cd web
+npm install
+npm run dev
+```
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+Abre [http://localhost:3000](http://localhost:3000) en el navegador.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+### 6. Configurar MetaMask
 
-## License
-For open source projects, say how it is licensed.
+1. Añadir red: RPC `http://localhost:8545`, Chain ID `31337`
+2. Importar cuentas de Anvil usando sus claves privadas
+3. Conectar la wallet de Admin (Account #0) para aprobar usuarios
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+---
+
+## Tests
+
+```bash
+cd sc
+forge test -vvv
+```
+
+```
+Ran 56 tests for test/SupplyChain.t.sol:SupplyChainTest
+56 passed | 0 failed | 0 skipped
+Finished in 6.36ms
+```
+
+Cobertura de tests:
+
+| Módulo | Tests |
+|---|---|
+| Gestión de usuarios | 9 |
+| Índices de usuarios | 3 |
+| Creación de tokens | 10 |
+| Certificación | 7 |
+| Consumo de materia prima | 6 |
+| Transferencias | 7 |
+| Validaciones y permisos | 7 |
+| Casos edge | 5 |
+| Eventos | 7 |
+| Flujos completos | 3 |
+
+---
+
+## MCP Server — Foundry
+
+El directorio `mcp-foundry/` contiene un servidor MCP que expone las herramientas de Foundry como funciones llamables por Claude:
+
+| Herramienta | Descripción |
+|---|---|
+| `forge_build` | Compila los contratos |
+| `forge_test` | Ejecuta la suite de tests |
+| `forge_deploy` | Despliega con un script de Foundry |
+| `anvil_start` | Inicia la blockchain local |
+| `cast_call` | Llama a una función de lectura |
+| `cast_send` | Envía una transacción firmada |
+
+Ver instrucciones de instalación en [mcp-foundry/README.md](mcp-foundry/README.md).
+
+---
+
+## Documentación
+
+| Documento | Contenido |
+|---|---|
+| [ModeloTeorico.md](ModeloTeorico.md) | Arquitectura completa: roles, estructuras, flujos, eventos, errores |
+| [docs/diagramas.md](docs/diagramas.md) | Diagramas Mermaid: ER, secuencias, estados |
+| [docs/manual-usuario.md](docs/manual-usuario.md) | Manual de uso por rol |
+| [GuionDemo.md](GuionDemo.md) | Guión del video de demostración (11 escenas, ~5 min) |
+| [IA.md](IA.md) | Retrospectiva del uso de IA: herramientas, tiempos, errores, sesiones |
+| [README_project.md](README_project.md) | Decisiones de diseño del smart contract y log de errores |
+
+---
+
+## Licencia
+
+[MIT](LICENSE) — Rafael Rivas, 2026
