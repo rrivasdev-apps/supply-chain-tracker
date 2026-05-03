@@ -12,10 +12,11 @@ import { toast } from "sonner"
 import { TokenWithBalance } from "@/hooks/useTokens"
 import { SCALE_FACTOR, fmtRaw } from "@/contracts/config"
 
-const BOBINA_SUGGESTIONS = ["calidad", "grado", "espesor", "norma", "colada", "lote", "proveedor"]
+const BOBINA_SUGGESTIONS  = ["calidad", "grado", "espesor", "norma", "colada", "lote", "proveedor"]
+const PRODUCT_SUGGESTIONS = ["tipo", "espesor", "dimensiones", "acabado", "tratamiento", "norma"]
 
 interface CreateTokenFormProps {
-  mode: "rawmaterial"
+  mode: "rawmaterial" | "product"
   editToken?: TokenWithBalance | null
   onSuccess?: () => void | Promise<void>
   onCancel?: () => void
@@ -31,7 +32,8 @@ function parseFeatures(raw: string): Record<string, string> {
   return {}
 }
 
-export function CreateTokenForm({ editToken, onSuccess, onCancel }: CreateTokenFormProps) {
+export function CreateTokenForm({ mode, editToken, onSuccess, onCancel }: CreateTokenFormProps) {
+  const isProduct = mode === "product"
   const { contract } = useWeb3()
   const [loading, setLoading] = useState(false)
 
@@ -60,7 +62,7 @@ export function CreateTokenForm({ editToken, onSuccess, onCancel }: CreateTokenF
     try {
       if (isEditMode && editToken) {
         await updateToken(contract, editToken.id, name.trim(), JSON.stringify(features))
-        toast.success("Bobina actualizada correctamente")
+        toast.success(isProduct ? "Producto actualizado correctamente" : "Bobina actualizada correctamente")
       } else {
         const supplyFloat = parseFloat(totalSupply)
         if (isNaN(supplyFloat) || supplyFloat <= 0) {
@@ -86,7 +88,11 @@ export function CreateTokenForm({ editToken, onSuccess, onCancel }: CreateTokenF
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{isEditMode ? "Editar Bobina" : "Registrar Nueva Bobina"}</CardTitle>
+        <CardTitle>
+          {isEditMode
+            ? isProduct ? "Editar Producto" : "Editar Bobina"
+            : "Registrar Nueva Bobina"}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -97,7 +103,7 @@ export function CreateTokenForm({ editToken, onSuccess, onCancel }: CreateTokenF
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Bobina HR-2024-001"
+                placeholder={isProduct ? "Lámina CR-2024-001" : "Bobina HR-2024-001"}
               />
             </div>
             <div className="space-y-1.5">
@@ -121,7 +127,7 @@ export function CreateTokenForm({ editToken, onSuccess, onCancel }: CreateTokenF
             <FeaturesEditor
               value={features}
               onChange={setFeatures}
-              suggestions={BOBINA_SUGGESTIONS}
+              suggestions={isProduct ? PRODUCT_SUGGESTIONS : BOBINA_SUGGESTIONS}
             />
           </div>
 

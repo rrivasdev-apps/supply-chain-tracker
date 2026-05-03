@@ -174,7 +174,7 @@ export function CreateLaminaForm({ bobinas, onSuccess, onCancel }: CreateLaminaF
               disabled={loading || !parentIdStr || certifiedBobinas.length === 0}
               className="flex-1"
             >
-              {loading ? "Procesando..." : "Consumir Bobina Y Crear Lámina"}
+              {loading ? "Procesando..." : "Crear Producto"}
             </Button>
             {onCancel && (
               <Button type="button" variant="outline" disabled={loading} onClick={onCancel}>

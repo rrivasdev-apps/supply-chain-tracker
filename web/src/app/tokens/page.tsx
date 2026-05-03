@@ -25,6 +25,8 @@ export default function TokensPage() {
   const [redeemToken, setRedeemToken] = useState<TokenWithBalance | null>(null)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [editToken, setEditToken] = useState<TokenWithBalance | null>(null)
+  const [editProduct, setEditProduct] = useState<TokenWithBalance | null>(null)
+  const [factoryTab, setFactoryTab] = useState("laminas")
 
   useEffect(() => {
     if (userLoading) return
@@ -135,7 +137,7 @@ export default function TokensPage() {
         <main className="flex-1 py-6 pr-6 pl-10 space-y-6">
           <h1 className="text-2xl font-bold">Inventario De Fábrica</h1>
 
-          <Tabs defaultValue="bobinas">
+          <Tabs value={factoryTab} onValueChange={setFactoryTab}>
             <TabsList>
               <TabsTrigger value="bobinas">Materia Prima ({rawMaterials.length})</TabsTrigger>
               <TabsTrigger value="laminas">Productos Fabricados ({products.length})</TabsTrigger>
@@ -155,6 +157,13 @@ export default function TokensPage() {
                 tokens={products}
                 loading={loading}
                 onTransfer={setTransferToken}
+                onEdit={(t) => {
+                  if (t.creator.toLowerCase() === account?.toLowerCase()) {
+                    setEditProduct(t)
+                  } else {
+                    toast.info("Solo el creador puede modificar este producto")
+                  }
+                }}
                 emptyMessage="No hay láminas fabricadas aún."
               />
             </TabsContent>
@@ -179,6 +188,23 @@ export default function TokensPage() {
                   token={transferToken}
                   onSuccess={handleTransferSuccess}
                   onCancel={() => setTransferToken(null)}
+                />
+              )}
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={!!editProduct} onOpenChange={(o) => !o && setEditProduct(null)}>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Editar Producto</DialogTitle></DialogHeader>
+              {editProduct && (
+                <CreateTokenForm
+                  mode="product"
+                  editToken={editProduct}
+                  onSuccess={async () => {
+                    setEditProduct(null)
+                    try { await refetch() } catch { /* ignore */ }
+                  }}
+                  onCancel={() => setEditProduct(null)}
                 />
               )}
             </DialogContent>

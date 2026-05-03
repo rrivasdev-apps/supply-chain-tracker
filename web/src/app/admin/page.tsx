@@ -123,7 +123,8 @@ export default function AdminPage() {
   const router = useRouter()
   const { isConnected, isAdmin, userLoading, contract } = useWeb3()
   const { users, pending, approved, loading, refetch } = useAllUsers()
-  const rejected = users.filter((u) => u.status === 2)
+  const rejected  = users.filter((u) => u.status === 2)
+  const canceled  = users.filter((u) => u.status === 3)
 
   const [query, setQuery] = useState("")
   const [busyAddr, setBusyAddr] = useState<string | null>(null)
@@ -188,6 +189,12 @@ export default function AdminPage() {
                 <span className="ml-1.5 text-xs text-muted-foreground">({rejected.length})</span>
               )}
             </TabsTrigger>
+            <TabsTrigger value="canceled">
+              Cancelados
+              {!loading && canceled.length > 0 && (
+                <span className="ml-1.5 text-xs text-muted-foreground">({canceled.length})</span>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="pending" className="mt-4">
@@ -218,6 +225,17 @@ export default function AdminPage() {
               loading={loading}
               query={query}
               emptyMessage="No hay usuarios rechazados."
+              onAction={handleAction}
+              busyAddr={busyAddr}
+            />
+          </TabsContent>
+
+          <TabsContent value="canceled" className="mt-4">
+            <UserList
+              users={canceled}
+              loading={loading}
+              query={query}
+              emptyMessage="No hay usuarios cancelados."
               onAction={handleAction}
               busyAddr={busyAddr}
             />

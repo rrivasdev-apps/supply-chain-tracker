@@ -257,14 +257,14 @@ export default function ProfilePage() {
           </p>
           <div className="rounded-xl border bg-card divide-y text-sm">
             <div className="flex justify-between px-5 py-3">
-              <span className="text-muted-foreground">Red</span><span>Anvil (local)</span>
+              <span className="text-muted-foreground">Red</span><span>Ethereum Sepolia</span>
             </div>
             <div className="flex justify-between px-5 py-3">
-              <span className="text-muted-foreground">Chain ID</span><span>31337</span>
+              <span className="text-muted-foreground">Chain ID</span><span>11155111</span>
             </div>
             <div className="flex justify-between px-5 py-3">
               <span className="text-muted-foreground">RPC</span>
-              <span className="font-mono text-xs">http://localhost:8545</span>
+              <span className="font-mono text-xs">sepolia.infura.io</span>
             </div>
           </div>
         </section>
